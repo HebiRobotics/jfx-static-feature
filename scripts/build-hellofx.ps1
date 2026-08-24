@@ -30,7 +30,7 @@ $exampleJar = (Get-ChildItem (Join-Path $root 'hellofx-example\target\hellofx-ex
 Write-Host '== cl (stubs)'
 New-Item -ItemType Directory -Force $target | Out-Null
 $stubObj = Join-Path $target 'foreign_platform_stubs.obj'
-& cl.exe /nologo /c /O2 "/Fo$stubObj" (Join-Path $root 'native-jfx-feature\src\main\c\foreign_platform_stubs.c')
+& cl.exe /nologo /c /O2 "/Fo$stubObj" (Join-Path $root 'native-jfx-feature\src\main\c\foreign_platform_stubs_windows.c')
 if ($LASTEXITCODE -ne 0) { throw 'cl failed' }
 
 # The feature reaches into the image builder, which lives in a named module at build time.
