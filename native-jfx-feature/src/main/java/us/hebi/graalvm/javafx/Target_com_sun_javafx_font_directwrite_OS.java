@@ -1,5 +1,7 @@
 package us.hebi.graalvm.javafx;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -19,6 +21,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * @author Florian Enner
  * @since 25 Aug 2026
  */
+@Platforms(Platform.WINDOWS.class)
 @TargetClass(className = "com.sun.javafx.font.directwrite.OS")
 final class Target_com_sun_javafx_font_directwrite_OS {
 
@@ -45,6 +48,7 @@ final class Target_com_sun_javafx_font_directwrite_OS {
 
 }
 
+@Platforms(Platform.WINDOWS.class)
 final class DirectWriteOverloads {
 
     @CFunction("Java_com_sun_javafx_font_directwrite_OS_CreateFontFace__J")

@@ -1,5 +1,7 @@
 package us.hebi.graalvm.javafx;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -16,10 +18,14 @@ import com.oracle.svm.core.jni.headers.JNIJavaVM;
  * enforces the rule, so {@code System.loadLibrary("glass")} fails. glass is linked into the image
  * anyway, so the load is replaced by a direct call to its initializer, dropping the version check
  * along with it.
+ * <p>
+ * Linux has the same defect in launcher.c and glass_general.cpp, but is covered by
+ * {@link Target_com_sun_glass_utils_NativeLibLoader} instead.
  *
  * @author Florian Enner
  * @since 25 Aug 2026
  */
+@Platforms(Platform.WINDOWS.class)
 @TargetClass(className = "com.sun.glass.ui.Application")
 final class Target_com_sun_glass_ui_Application {
 
@@ -36,6 +42,7 @@ final class Target_com_sun_glass_ui_Application {
 
 }
 
+@Platforms(Platform.WINDOWS.class)
 final class GlassLibrary {
 
     @CFunction("JNI_OnLoad_glass")
