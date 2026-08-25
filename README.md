@@ -1,8 +1,9 @@
 # native-jfx-feature
 
-GraalVM native-image support for a statically linked JavaFX 26 on Windows and Linux x86_64. The
-image contains the FX native code, so on Windows the executable runs from an empty directory with
-no FX DLLs next to it. On Linux the GTK stack stays dynamic, see below.
+GraalVM native-image support for a statically linked JavaFX 26 on Windows, Linux x86_64 and macOS
+aarch64. The image contains the FX native code, so on Windows the executable runs from an empty
+directory with no FX DLLs next to it. On Linux the GTK stack and on macOS the system frameworks
+stay dynamic, see below.
 
 The feature jar carries three things:
 
@@ -10,9 +11,10 @@ The feature jar carries three things:
   libraries of the target platform as static JNI libraries. Windows has seven (`glass`,
   `prism_common`, `prism_d3d`, `prism_sw`, `decora_sse`, `javafx_font`, `javafx_iio`), Linux ten
   (`prism_es2` instead of `prism_d3d`, plus `glassgtk3`, `javafx_font_freetype` and
-  `javafx_font_pango`). It also registers the `Application` subclass constructors, which Oracle's
-  built-in `JavaFXFeature` misses even though `Application.launch` uses them.
-- Four substitutions, each on the platform that needs it:
+  `javafx_font_pango`) and macOS eight (`prism_es2` and `prism_mtl` instead of `prism_d3d`). It
+  also registers the `Application` subclass constructors, which Oracle's built-in `JavaFXFeature`
+  misses even though `Application.launch` uses them.
+- Eight substitutions, each on the platform that needs it:
   - `Target_com_sun_javafx_font_directwrite_OS` (Windows) - Substrate resolves builtin JNI entry
     points by their short name only, so the four overloaded `directwrite.OS` methods can never
     link, because the C side only has them under their signature-mangled names. `@Substitute` plus
@@ -22,26 +24,46 @@ The feature jar carries three things:
     `System.loadLibrary("glass")` fails. Every other FX library handshakes correctly under
     `#ifdef STATIC_BUILD`, glass (`native-glass/win/Utils.cpp`) does not. Upstream OpenJFX bug,
     one-line fix, worth reporting. The substitution calls the initializer directly.
-  - `Target_com_sun_glass_utils_NativeLibLoader` (Linux) - Substrate finds the `JNI_OnLoad_<lib>` of
-    a statically linked library with `dlsym`, but hides every symbol the image does not export
-    itself behind a linker version script, so no FX library can be loaded that way. The
-    substitution calls each library's initializer directly, which also covers the JNI version bug
-    above (`native-glass/gtk/launcher.c` and `glass_general.cpp` both report 1.6).
-  - `Target_com_sun_javafx_font_freetype_FTFactory` (Windows) - the headless glass platform
+  - `Target_com_sun_glass_utils_NativeLibLoader` (Linux, macOS) - Substrate finds the
+    `JNI_OnLoad_<lib>` of a statically linked library with `dlsym`, but hides every symbol the
+    image does not export itself behind a linker version script on Linux and an exported symbols
+    list on macOS, so no FX library can be loaded that way. The substitution calls each library's
+    initializer directly, which also covers the JNI version bug above
+    (`native-glass/gtk/launcher.c` and `glass_general.cpp` report 1.6, `mac/GlassApplication.m`
+    reports 1.4).
+  - `Target_com_sun_javafx_font_freetype_FTFactory` (Windows, macOS) - the headless glass platform
     registers the freetype factory for reflection and is reachable everywhere, which makes the 45
-    `OSFreetype`/`OSPango` natives link-reachable on Windows, where there is no
+    `OSFreetype`/`OSPango` natives link-reachable on Windows and macOS, where there is no
     `javafx_font_{freetype,pango}`. `@Delete` on the factory cuts the backend out instead. Windows
-    uses the DirectWrite factory on every glass platform, so nothing asks for it.
-- `src/main/c/foreign_platform_stubs_{windows,linux}.c` - print-and-abort stubs for the other
+    uses the DirectWrite and macOS the CoreText factory on every glass platform, so nothing asks
+    for it.
+  - `Target_com_sun_glass_ui_mac_MacTimer` and `Target_com_sun_javafx_font_coretext_OS` (macOS) -
+    the same overload problem as `directwrite.OS`, for `MacTimer._start` and
+    `coretext.OS.CFStringCreateWithCharacters`. Both C sides use the JNIEnv, so these pass the
+    thread's real environment and a local handle for the argument rather than null.
+  - `Target_com_sun_javafx_application_LauncherImpl` (macOS) - glass posts its run loop to the
+    first thread of the process and waits for it, so that thread must be inside a CFRunLoop and not
+    parked on the launcher's latch. The java launcher arranges this by starting main on a second
+    thread and parking the first one, a native image calls main on the first thread itself, and FX
+    hangs on startup without ever showing a window. The substitution keeps the upstream launcher
+    thread and pumps the run loop instead of waiting on the latch, but only when called on the
+    first thread: a launcher that already runs Cocoa and calls `main` from a background thread
+    (native-launchers-maven-plugin, Gluon's `AppDelegate.m`) gets the upstream behavior, and glass
+    takes its embedded path.
+  - `Target_com_sun_glass_ui_mac_MacVariant` (macOS) - `toString` appends to a variable of type
+    Object, which the string concatenation outlining of GraalVM 25.0.4 fails to compile. Nothing
+    calls it, so a shorter text keeps `-H:-OutlineIndyStringConcatenations` out of the build.
+- `src/main/c/foreign_platform_stubs_{windows,linux,macos}.c` - print-and-abort stubs for the other
   platforms' font and image natives that the analysis keeps reachable and that the static libraries
   of this platform do not contain. Nothing ever reaches them. The Linux file also stubs
   `g_thread_init`, which glib dropped in 2.32 and glassgtk3 still references behind a run-time
   version check.
 
 `META-INF/native-image/us.hebi.graalvm/native-jfx-feature/native-image.properties` contributes only
-`--features=us.hebi.graalvm.javafx.JavaFXStaticFeature`. The six `--add-exports` the feature needs
-stay in the build script, since it is unverified whether native-image applies them from a
-properties file early enough to load the feature class.
+`--features=us.hebi.graalvm.javafx.JavaFXStaticFeature`. The `--add-exports` the feature needs stay
+in the build script, since it is unverified whether native-image applies them from a properties
+file early enough to load the feature class. macOS needs one more than the other two, for the JNI
+environment and object handles the coretext and MacTimer substitutions pass on.
 
 ## Building the static JavaFX 26 SDK on Windows
 
@@ -76,6 +98,19 @@ bash gradlew --no-daemon -PSTATIC_BUILD=true -PCOMPILE_MEDIA=false -PCOMPILE_WEB
 
 `build/sdk/lib` then holds ten `lib*.a` next to the jars. `libjavafx_iio.a` is not an archive but an
 `ld -r` merged object with an `.a` name (`LINUX.iio.linker = "ld"`), which links fine.
+
+## Building the static JavaFX 26 SDK on macOS
+
+Same branch and the same gradle command again, with Xcode 15 and a JDK 24+ as the boot JDK:
+
+```bash
+JAVA_HOME=<jdk> bash gradlew --no-daemon \
+    -PSTATIC_BUILD=true -PCOMPILE_MEDIA=false -PCOMPILE_WEBKIT=false sdk
+```
+
+`build/sdk/lib` holds eight `lib*.a`: `glass`, `prism_common`, `prism_es2`, `prism_mtl`,
+`prism_sw`, `decora_sse`, `javafx_font` and `javafx_iio`. There is no separate glass backend
+library the way Linux has `glassgtk3`, the Cocoa one is in `libglass.a`.
 
 ## Using it on Windows
 
@@ -140,3 +175,31 @@ about 50 more transitively. A machine that can run any GTK application has all o
 
 The es2 pipeline needs a GL driver that passes `isGLGPUQualify`, which llvmpipe does not, so a
 container without a GPU either falls back to the software pipeline or needs `-Dprism.forceGPU=true`.
+
+## Using it on macOS
+
+```bash
+FX_SDK=<sdk> GRAAL_HOME=<graalvm> scripts/build-hellofx.sh
+target/hellofx
+```
+
+The same script as on Linux, which picks the macOS stubs, frameworks and libraries by `uname`. Two
+things are different from the other platforms:
+
+- The frameworks the image links against are the ones `buildSrc/mac.gradle` uses for the dynamic
+  build (AppKit, ApplicationServices, Carbon, OpenGL, QuartzCore, Security, Network, Metal) plus
+  CoreText and CoreGraphics for the font code and CoreFoundation for the run loop, with `-lobjc`
+  and `-lc++`. `otool -L` on the image lists 18 entries, those plus Foundation, CoreServices,
+  CoreVideo, `libSystem`, `libz`. They stay dynamic the same way GTK does on Linux, and every
+  macOS has them.
+- `libglass.a` is linked with `-force_load`. `GlassWindow+Java.m` and `GlassWindow+Overrides.m`
+  are Objective-C categories, so their object files define nothing the linker goes looking for and
+  are dropped from a static link, which surfaces as `-[GlassWindow _initWithContentRect:...]:
+  unrecognized selector` when the first window opens. `-ObjC` would do the same but also loads
+  `prism_mtl`'s `MetalShader.o`, whose `jStringToNSString` collides with the one in glass'
+  `GlassAccessible.o`.
+
+All three pipelines come up: es2 (the default), `-Dprism.order=sw` and `-Dprism.order=mtl`, which
+was expected to fail for lack of metadata and does not. `MacTimer._initIDs` logs four
+`CVDisplayLink...error: -6661` lines on every one of them, whether that also happens on a JVM is
+unverified; the scene renders regardless.
