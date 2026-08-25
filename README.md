@@ -5,80 +5,85 @@ aarch64. The image contains the FX native code, so on Windows the executable run
 directory with no FX DLLs next to it. On Linux the GTK stack and on macOS the system frameworks
 stay dynamic, see below.
 
-The feature jar carries three things:
+## What the feature does
 
-- `JavaFXStaticFeature` registers the JNI package prefixes as builtin and adds the static FX
-  libraries of the target platform as static JNI libraries. Windows has seven (`glass`,
-  `prism_common`, `prism_d3d`, `prism_sw`, `decora_sse`, `javafx_font`, `javafx_iio`), Linux ten
-  (`prism_es2` instead of `prism_d3d`, plus `glassgtk3`, `javafx_font_freetype` and
-  `javafx_font_pango`) and macOS eight (`prism_es2` and `prism_mtl` instead of `prism_d3d`).
+`JavaFXStaticFeature` tells native-image that the JavaFX natives are compiled into the image rather
+than loaded from a DLL. It registers the FX JNI package prefixes as builtin, adds the platform's
+static FX libraries as static JNI libraries (seven on Windows, ten on Linux, eight on macOS, see
+the SDK sections below), and adds the system libraries those archives reference as dynamic
+libraries: `STATIC_BUILD` only drops the link flags from the archive step, it does not vendor
+anything, so GTK on Linux and the Cocoa frameworks on macOS stay dynamic dependencies that
+something has to name. Naming them here keeps every consumer from carrying the list. Only what has
+no `NativeLibraries` API behind it stays in the build scripts: the macOS frameworks and
+`-force_load`, and `g_thread_init` on Linux.
 
-  The system libraries those archives reference are added the same way, as dynamic non-JNI
-  libraries: 22 on Windows, 16 on Linux, and `objc` and `c++` on macOS. `STATIC_BUILD` only drops
-  the link flags from the archive step, it does not vendor anything, so all of them stay dynamic
-  dependencies of the image and something has to name them. Doing it here keeps every consumer
-  from carrying the list. What is left over is linker syntax with no `NativeLibraries` API behind
-  it: the macOS frameworks and `-force_load`, and `g_thread_init` on Linux.
+It also registers the no-argument constructor of every reachable `Application` subclass. Oracle's
+built-in `JavaFXFeature` registers the subclasses for reflection but not the constructor, which is
+what `LauncherImpl.launchApplication1` instantiates them through, so `getConstructor()` throws on a
+class the reflection system otherwise knows about. The handler only fires for subclasses the
+analysis already reached, so unused launchers in the same jar cost nothing.
 
-  It also registers the no-argument constructor of every reachable `Application` subclass, through
-  `registerSubtypeReachabilityHandler`. Oracle's built-in `JavaFXFeature` registers the subclasses
-  it finds for reflection but not that constructor, which is the one member
-  `LauncherImpl.launchApplication1` instantiates them through, so `getConstructor()` throws on a
-  class the reflection system otherwise knows about. The handler only fires for subclasses the
-  analysis already reached, and reaching one does not follow from the built-in feature registering
-  it: none of the twelve `Application` subclasses in `gui` that no launcher starts appear in the
-  hebi-charts image, which has that jar on its class path. Where they are reached the cost is real,
-  343 classes in a Scope image for the three subclasses `LogViewer` launches, but the shipped
-  library serves every launcher from one image and needs them. `registerSubtypeReachabilityHandler`
-  is public API in GraalVM 21 through 25.2, unlike the internal `findSubclasses` it replaced, which
-  25.2 removed.
-- Eight substitutions, each on the platform that needs it:
-  - `Target_directwrite_OS` in `OverloadedNatives` (Windows) - Substrate resolves builtin JNI entry
-    points by their short name only, so the four overloaded `directwrite.OS` methods can never
-    link, because the C side only has them under their signature-mangled names. `@Substitute` plus
-    `@CFunction` routes them to the mangled symbols. No config file can fix this.
-  - `Target_Application` in `StaticLibraryLoading` (Windows) - `JNI_OnLoad_glass` returns JNI 1.2, while the
-    spec requires 1.8 or later for a statically linked library and Substrate enforces it, so
-    `System.loadLibrary("glass")` fails. Every other FX library handshakes correctly under
-    `#ifdef STATIC_BUILD`, glass (`native-glass/win/Utils.cpp`) does not. Upstream OpenJFX bug,
-    one-line fix, worth reporting. The substitution calls the initializer directly.
-  - `Target_NativeLibLoader` in `StaticLibraryLoading` (Linux, macOS) - Substrate finds the
-    `JNI_OnLoad_<lib>` of a statically linked library with `dlsym`, but hides every symbol the
-    image does not export itself behind a linker version script on Linux and an exported symbols
-    list on macOS, so no FX library can be loaded that way. The substitution calls each library's
-    initializer directly, which also covers the JNI version bug above
-    (`native-glass/gtk/launcher.c` and `glass_general.cpp` report 1.6, `mac/GlassApplication.m`
-    reports 1.4).
-  - `Target_MacTimer` and `Target_coretext_OS` in `OverloadedNatives` (macOS) -
-    the same overload problem as `directwrite.OS`, for `MacTimer._start` and
-    `coretext.OS.CFStringCreateWithCharacters`. Both C sides use the JNIEnv, so these pass the
-    thread's real environment and a local handle for the argument rather than null.
-  - `Target_LauncherImpl` in `MacStartup` (macOS) - glass posts its run loop to the
-    first thread of the process and waits for it, so that thread must be inside a CFRunLoop and not
-    parked on the launcher's latch. The java launcher arranges this by starting main on a second
-    thread and parking the first one, a native image calls main on the first thread itself, and FX
-    hangs on startup without ever showing a window. The substitution keeps the upstream launcher
-    thread and pumps the run loop instead of waiting on the latch, but only when called on the
-    first thread: a launcher that already runs Cocoa and calls `main` from a background thread
-    (native-launchers-maven-plugin, Gluon's `AppDelegate.m`) gets the upstream behavior, and glass
-    takes its embedded path.
-  - `Target_MacVariant` in `CompilerWorkarounds` (macOS) - `toString` appends to a variable of type
-    Object, which the string concatenation outlining of GraalVM 25.0.4 fails to compile. Nothing
-    calls it, so a shorter text keeps `-H:-OutlineIndyStringConcatenations` out of the build.
-  - `DeleteMacNatives`, `DeleteLinuxNatives`, `DeleteWindowsNatives` and `DeleteIosNatives` - the font and
-    image back ends of the *other* platforms, which the analysis keeps reachable even though this
-    platform's static libraries contain none of their natives. Each holder groups the targets that
-    belong to one platform's library behind one `NotMacOs`/`NotLinux`/`NotWindows`/`NotIos` predicate, so
-    each applies on the two platforms that are not the owner. `@Delete` cuts the class out where
-    that is possible: `DFontDecoder` and `MacFontFinder` off macOS, `FTFactory` and
-    `FontConfigManager` off Linux (the headless glass platform registers the freetype factory for
-    reflection everywhere, which is what drags in the 45 `OSFreetype`/`OSPango` natives), and
-    `IosImageLoader` off iOS. `PrismFontFactory` is the exception: it is the base class of every
-    platform factory, so its six Windows-only natives are substituted to throw instead. Every caller
-    is overridden by the Linux and macOS factories.
-    <br>The conditions are negations rather than `@Platforms` inclusion lists, which cannot express
-    one: an inclusion list would silently start keeping these on a future iOS or Android port that
-    has none of the libraries either.
+The rest of the jar is substitutions, grouped by the problem they solve:
+
+| Class | Platform | Problem |
+|---|---|---|
+| `StaticLibraryLoading` | all | `System.loadLibrary` cannot load a static FX library, see below |
+| `OverloadedNatives` | Windows, macOS | Substrate links builtin JNI methods by short name, so overloaded natives never resolve |
+| `MacStartup` | macOS | glass needs the first thread inside a CFRunLoop, a native image runs `main` there |
+| `CompilerWorkarounds` | macOS | GraalVM 25.0.4 fails to outline `MacVariant.toString` |
+| `stubs/Delete*Natives` | all | classes with natives that only another platform's library implements |
+
+### Static library loading
+
+`System.loadLibrary("glass")` fails on every platform, for two unrelated reasons. On Windows
+`JNI_OnLoad_glass` returns JNI 1.2, while the spec requires 1.8 or later from a statically linked
+library and Substrate enforces it. Every other FX library handshakes correctly under
+`#ifdef STATIC_BUILD`, glass (`native-glass/win/Utils.cpp`) does not; that is an upstream OpenJFX
+bug with a one-line fix, and `Target_Application` calls the initializer directly until it lands.
+
+On Linux and macOS no FX library can be loaded that way at all: Substrate finds the
+`JNI_OnLoad_<lib>` of a static library with `dlsym`, but hides every symbol the image does not
+export itself behind a linker version script on Linux and an exported symbols list on macOS.
+`Target_NativeLibLoader` calls each library's initializer directly instead, which also covers the
+version bug (glass reports 1.6 on Linux and 1.4 on macOS).
+
+### Overloaded natives
+
+Substrate resolves the JNI entry point of a builtin native method by its short name only. An
+overloaded native only exists under its signature-mangled name on the C side, so it can never
+link, and no config file can fix that. `@Substitute` plus `@CFunction` routes the four
+`directwrite.OS` overloads (Windows), `MacTimer._start` and
+`coretext.OS.CFStringCreateWithCharacters` (macOS) straight to the mangled symbols. The directwrite
+functions use neither the JNIEnv nor the jclass; the macOS ones read through the JNIEnv, so they get
+the thread's real environment and a local handle.
+
+### Mac startup
+
+glass posts its run loop to the first thread of the process and waits for it, so that thread must
+be inside a CFRunLoop while FX starts. The java launcher arranges this by running `main` on a
+second thread and parking the first one; a native image runs `main` on the first thread and hangs
+without ever showing a window. `Target_LauncherImpl` keeps the upstream launcher thread and pumps
+the run loop instead of waiting on the latch, but only when called on the first thread: a launcher
+that already runs Cocoa and calls `main` from a background thread (native-launchers-maven-plugin,
+Gluon's `AppDelegate.m`) gets the upstream behavior and glass takes its embedded path.
+
+`MacVariant.toString` appends to a variable of type Object, which the string concatenation
+outlining of GraalVM 25.0.4 fails to compile. Nothing calls it, so a shorter text keeps
+`-H:-OutlineIndyStringConcatenations` out of the build.
+
+### Natives of the other platforms
+
+The analysis keeps the font and image back ends of the other platforms reachable, even though this
+platform's static libraries contain none of their natives, and every unresolved native would need a
+C stub. The `stubs` package deletes those classes instead: `DFontDecoder` and `MacFontFinder` off
+macOS, `FTFactory` and `FontConfigManager` off Linux (the headless glass platform registers the
+freetype factory for reflection everywhere, which drags in 45 `OSFreetype`/`OSPango` natives), and
+`IosImageLoader` off iOS. `PrismFontFactory` is the base class of every platform factory and cannot
+be deleted, so its six Windows-only natives throw instead; every caller is overridden by the Linux
+and macOS factories. The conditions are negations (`NotLinux` etc.) rather than `@Platforms`
+inclusion lists, so a future iOS or Android port does not silently keep them.
+
+### Wiring
 
 `META-INF/native-image/us.hebi.graalvm/native-jfx-feature/native-image.properties` contributes only
 `--features=us.hebi.graalvm.javafx.JavaFXStaticFeature`. The `--add-exports` the feature needs stay
