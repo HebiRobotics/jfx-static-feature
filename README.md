@@ -33,33 +33,27 @@ The feature jar carries three things:
   is public API in GraalVM 21 through 25.2, unlike the internal `findSubclasses` it replaced, which
   25.2 removed.
 - Eight substitutions, each on the platform that needs it:
-  - `Target_com_sun_javafx_font_directwrite_OS` (Windows) - Substrate resolves builtin JNI entry
+  - `Target_directwrite_OS` in `OverloadedNatives` (Windows) - Substrate resolves builtin JNI entry
     points by their short name only, so the four overloaded `directwrite.OS` methods can never
     link, because the C side only has them under their signature-mangled names. `@Substitute` plus
     `@CFunction` routes them to the mangled symbols. No config file can fix this.
-  - `Target_com_sun_glass_ui_Application` (Windows) - `JNI_OnLoad_glass` returns JNI 1.2, while the
+  - `Target_Application` in `StaticLibraryLoading` (Windows) - `JNI_OnLoad_glass` returns JNI 1.2, while the
     spec requires 1.8 or later for a statically linked library and Substrate enforces it, so
     `System.loadLibrary("glass")` fails. Every other FX library handshakes correctly under
     `#ifdef STATIC_BUILD`, glass (`native-glass/win/Utils.cpp`) does not. Upstream OpenJFX bug,
     one-line fix, worth reporting. The substitution calls the initializer directly.
-  - `Target_com_sun_glass_utils_NativeLibLoader` (Linux, macOS) - Substrate finds the
+  - `Target_NativeLibLoader` in `StaticLibraryLoading` (Linux, macOS) - Substrate finds the
     `JNI_OnLoad_<lib>` of a statically linked library with `dlsym`, but hides every symbol the
     image does not export itself behind a linker version script on Linux and an exported symbols
     list on macOS, so no FX library can be loaded that way. The substitution calls each library's
     initializer directly, which also covers the JNI version bug above
     (`native-glass/gtk/launcher.c` and `glass_general.cpp` report 1.6, `mac/GlassApplication.m`
     reports 1.4).
-  - `Target_com_sun_javafx_font_freetype_FTFactory` (Windows, macOS) - the headless glass platform
-    registers the freetype factory for reflection and is reachable everywhere, which makes the 45
-    `OSFreetype`/`OSPango` natives link-reachable on Windows and macOS, where there is no
-    `javafx_font_{freetype,pango}`. `@Delete` on the factory cuts the backend out instead. Windows
-    uses the DirectWrite and macOS the CoreText factory on every glass platform, so nothing asks
-    for it.
-  - `Target_com_sun_glass_ui_mac_MacTimer` and `Target_com_sun_javafx_font_coretext_OS` (macOS) -
+  - `Target_MacTimer` and `Target_coretext_OS` in `OverloadedNatives` (macOS) -
     the same overload problem as `directwrite.OS`, for `MacTimer._start` and
     `coretext.OS.CFStringCreateWithCharacters`. Both C sides use the JNIEnv, so these pass the
     thread's real environment and a local handle for the argument rather than null.
-  - `Target_com_sun_javafx_application_LauncherImpl` (macOS) - glass posts its run loop to the
+  - `Target_LauncherImpl` in `MacStartup` (macOS) - glass posts its run loop to the
     first thread of the process and waits for it, so that thread must be inside a CFRunLoop and not
     parked on the launcher's latch. The java launcher arranges this by starting main on a second
     thread and parking the first one, a native image calls main on the first thread itself, and FX
@@ -68,16 +62,23 @@ The feature jar carries three things:
     first thread: a launcher that already runs Cocoa and calls `main` from a background thread
     (native-launchers-maven-plugin, Gluon's `AppDelegate.m`) gets the upstream behavior, and glass
     takes its embedded path.
-  - `Target_com_sun_glass_ui_mac_MacVariant` (macOS) - `toString` appends to a variable of type
+  - `Target_MacVariant` in `CompilerWorkarounds` (macOS) - `toString` appends to a variable of type
     Object, which the string concatenation outlining of GraalVM 25.0.4 fails to compile. Nothing
     calls it, so a shorter text keeps `-H:-OutlineIndyStringConcatenations` out of the build.
-  - `Target_com_sun_javafx_font_{DFontDecoder,MacFontFinder,FontConfigManager}` and
-    `Target_com_sun_javafx_iio_ios_IosImageLoader` - the other platforms' font and image back ends,
-    which the analysis keeps reachable even though this platform's static libraries contain none of
-    their natives. Deleting them cuts the code out instead of stubbing the symbols in C.
-  - `Target_com_sun_javafx_font_PrismFontFactory` (Linux, macOS) - six natives of the shared base
-    class that only the Windows javafx_font library implements. The class itself cannot be deleted,
-    so they throw. Every caller is overridden by the Linux and macOS factories.
+  - `DeleteMacNatives`, `DeleteLinuxNatives`, `DeleteWindowsNatives` and `DeleteIosNatives` - the font and
+    image back ends of the *other* platforms, which the analysis keeps reachable even though this
+    platform's static libraries contain none of their natives. Each holder groups the targets that
+    belong to one platform's library behind one `NotMacOs`/`NotLinux`/`NotWindows`/`NotIos` predicate, so
+    each applies on the two platforms that are not the owner. `@Delete` cuts the class out where
+    that is possible: `DFontDecoder` and `MacFontFinder` off macOS, `FTFactory` and
+    `FontConfigManager` off Linux (the headless glass platform registers the freetype factory for
+    reflection everywhere, which is what drags in the 45 `OSFreetype`/`OSPango` natives), and
+    `IosImageLoader` off iOS. `PrismFontFactory` is the exception: it is the base class of every
+    platform factory, so its six Windows-only natives are substituted to throw instead. Every caller
+    is overridden by the Linux and macOS factories.
+    <br>The conditions are negations rather than `@Platforms` inclusion lists, which cannot express
+    one: an inclusion list would silently start keeping these on a future iOS or Android port that
+    has none of the libraries either.
 
 `META-INF/native-image/us.hebi.graalvm/native-jfx-feature/native-image.properties` contributes only
 `--features=us.hebi.graalvm.javafx.JavaFXStaticFeature`. The `--add-exports` the feature needs stay
