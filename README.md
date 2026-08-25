@@ -12,7 +12,7 @@ The feature jar carries three things:
   (`prism_es2` instead of `prism_d3d`, plus `glassgtk3`, `javafx_font_freetype` and
   `javafx_font_pango`). It also registers the `Application` subclass constructors, which Oracle's
   built-in `JavaFXFeature` misses even though `Application.launch` uses them.
-- Three substitutions for real bugs, each on the platform that has it:
+- Four substitutions, each on the platform that needs it:
   - `Target_com_sun_javafx_font_directwrite_OS` (Windows) - Substrate resolves builtin JNI entry
     points by their short name only, so the four overloaded `directwrite.OS` methods can never
     link, because the C side only has them under their signature-mangled names. `@Substitute` plus
@@ -27,6 +27,11 @@ The feature jar carries three things:
     itself behind a linker version script, so no FX library can be loaded that way. The
     substitution calls each library's initializer directly, which also covers the JNI version bug
     above (`native-glass/gtk/launcher.c` and `glass_general.cpp` both report 1.6).
+  - `Target_com_sun_javafx_font_freetype_FTFactory` (Windows) - the headless glass platform
+    registers the freetype factory for reflection and is reachable everywhere, which makes the 45
+    `OSFreetype`/`OSPango` natives link-reachable on Windows, where there is no
+    `javafx_font_{freetype,pango}`. `@Delete` on the factory cuts the backend out instead. Windows
+    uses the DirectWrite factory on every glass platform, so nothing asks for it.
 - `src/main/c/foreign_platform_stubs_{windows,linux}.c` - print-and-abort stubs for the other
   platforms' font and image natives that the analysis keeps reachable and that the static libraries
   of this platform do not contain. Nothing ever reaches them. The Linux file also stubs
