@@ -32,11 +32,6 @@ fi
 feature_jar=$(ls "$root"/native-jfx-feature/target/native-jfx-feature-*.jar)
 example_jar=$(ls "$root"/hellofx-example/target/hellofx-example-*.jar)
 
-echo '== cc (stubs)'
-mkdir -p "$target"
-stub_obj=$target/foreign_platform_stubs.o
-cc -c -O2 -o "$stub_obj" "$root/native-jfx-feature/src/main/c/foreign_platform_stubs_$os.c"
-
 # The feature reaches into the image builder, which lives in a named module at build time.
 exports=(
     --add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED
@@ -48,33 +43,22 @@ exports=(
     --add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni.headers=ALL-UNNAMED
 )
 
-# Libraries the static glass/prism/font code pulls in. STATIC_BUILD only drops the link flags from
-# the archives, it does not vendor anything, so all of these stay dynamic dependencies of the image.
+# The feature adds every plain system library the static archives reference. What is left is
+# platform linker syntax it has no API for: the macOS frameworks, force-loading libglass.a because
+# its GlassWindow categories define no symbol the linker looks for, and a definition for
+# g_thread_init, which glassgtk3 still references behind a glib version check no current glib takes.
 if [ "$os" = linux ]; then
-    system_libs=(
-        -lgtk-3 -lgdk-3 -lgdk_pixbuf-2.0 -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lcairo
-        -lpangoft2-1.0 -lpango-1.0 -lfreetype
-        -lX11 -lXtst -lXxf86vm -lGL
-        -lstdc++ -lm
-    )
+    linker_options=(-H:NativeLinkerOption=-Wl,--defsym,g_thread_init=abort)
 else
-    # the frameworks buildSrc/mac.gradle links the dynamic libraries against, plus the font ones.
-    # libglass.a is loaded whole because the GlassWindow+Java and +Overrides categories define no
-    # symbol the linker looks for and get dropped ("-[GlassWindow _initWithContentRect:...]:
-    # unrecognized selector"). -ObjC would also pull in prism_mtl's MetalShader.o, which duplicates
-    # glass' _jStringToNSString.
-    system_libs=("-Wl,-force_load,$fx_lib/libglass.a" -lobjc -lc++)
+    linker_options=("-H:NativeLinkerOption=-Wl,-force_load,$fx_lib/libglass.a")
     for framework in AppKit ApplicationServices Carbon OpenGL QuartzCore Security Network Metal CoreText CoreGraphics CoreFoundation; do
-        system_libs+=("-Wl,-framework,$framework")
+        linker_options+=("-H:NativeLinkerOption=-Wl,-framework,$framework")
     done
 fi
-linker_options=()
-for option in "${system_libs[@]}" "$stub_obj"; do
-    linker_options+=("-H:NativeLinkerOption=$option")
-done
 
 class_path=$(IFS=:; echo "$feature_jar:$example_jar:${fx_jars[*]}")
 
+mkdir -p "$target"
 echo '== native-image'
 start=$SECONDS
 "$GRAAL_HOME/bin/native-image" \

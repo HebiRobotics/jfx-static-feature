@@ -70,6 +70,31 @@ public class JavaFXStaticFeature implements Feature {
             "javafx_font",
             "javafx_iio");
 
+    /**
+     * System libraries the static glass, prism and font archives reference. STATIC_BUILD only
+     * drops the link flags from the archives, it does not vendor anything, so every one of these
+     * stays a dynamic dependency of the image and the linker has to be told about it.
+     */
+    private static final List<String> WINDOWS_SYSTEM_LIBRARIES = List.of(
+            "comdlg32", "comctl32", "imm32", "shell32", "ole32", "oleaut32", "gdi32", "user32",
+            "urlmon", "winmm", "d3d9", "uiautomationcore", "dwrite", "d2d1", "windowscodecs",
+            "usp10", "advapi32", "shlwapi", "dwmapi", "uuid", "msimg32", "propsys");
+
+    /** @see #WINDOWS_SYSTEM_LIBRARIES */
+    private static final List<String> LINUX_SYSTEM_LIBRARIES = List.of(
+            "gtk-3", "gdk-3", "gdk_pixbuf-2.0", "glib-2.0", "gobject-2.0", "gio-2.0", "cairo",
+            "pangoft2-1.0", "pango-1.0", "freetype",
+            "X11", "Xtst", "Xxf86vm", "GL",
+            "stdc++", "m");
+
+    /**
+     * The Objective-C runtime and the C++ standard library. The frameworks glass and prism link
+     * against are not libraries, so they stay linker options in the SDK's native-image.properties.
+     *
+     * @see #WINDOWS_SYSTEM_LIBRARIES
+     */
+    private static final List<String> MACOS_SYSTEM_LIBRARIES = List.of("objc", "c++");
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return access.findClassByName("javafx.application.Application") != null;
@@ -91,6 +116,9 @@ public class JavaFXStaticFeature implements Feature {
         for (String library : staticLibraries()) {
             nativeLibraries.addStaticJniLibrary(library);
         }
+        for (String library : systemLibraries()) {
+            nativeLibraries.addDynamicNonJniLibrary(library);
+        }
 
         // Application.launch instantiates the concrete subclass through its no-argument
         // constructor, which the built-in JavaFXFeature does not register. The handler only
@@ -110,6 +138,17 @@ public class JavaFXStaticFeature implements Feature {
             return MACOS_LIBRARIES;
         }
         throw new UnsupportedOperationException("No static JavaFX libraries known for this platform");
+    }
+
+    private static List<String> systemLibraries() {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            return WINDOWS_SYSTEM_LIBRARIES;
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            return LINUX_SYSTEM_LIBRARIES;
+        } else if (Platform.includedIn(Platform.MACOS.class)) {
+            return MACOS_SYSTEM_LIBRARIES;
+        }
+        throw new UnsupportedOperationException("No system libraries known for this platform");
     }
 
 }

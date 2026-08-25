@@ -27,12 +27,6 @@ if (-not $NoMaven) {
 $featureJar = (Get-ChildItem (Join-Path $root 'native-jfx-feature\target\native-jfx-feature-*.jar')).FullName
 $exampleJar = (Get-ChildItem (Join-Path $root 'hellofx-example\target\hellofx-example-*.jar')).FullName
 
-Write-Host '== cl (stubs)'
-New-Item -ItemType Directory -Force $target | Out-Null
-$stubObj = Join-Path $target 'foreign_platform_stubs.obj'
-& cl.exe /nologo /c /O2 "/Fo$stubObj" (Join-Path $root 'native-jfx-feature\src\main\c\foreign_platform_stubs_windows.c')
-if ($LASTEXITCODE -ne 0) { throw 'cl failed' }
-
 # The feature reaches into the image builder, which lives in a named module at build time.
 $exports = @(
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
@@ -43,14 +37,7 @@ $exports = @(
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni.headers=ALL-UNNAMED'
 )
 
-# Windows libraries the static glass/prism/font code pulls in.
-$systemLibs = @(
-    'comdlg32.lib', 'comctl32.lib', 'imm32.lib', 'shell32.lib', 'ole32.lib', 'oleaut32.lib',
-    'gdi32.lib', 'user32.lib', 'urlmon.lib', 'winmm.lib', 'd3d9.lib', 'uiautomationcore.lib',
-    'dwrite.lib', 'd2d1.lib', 'windowscodecs.lib', 'usp10.lib', 'advapi32.lib', 'shlwapi.lib',
-    'dwmapi.lib', 'uuid.lib', 'msimg32.lib', 'propsys.lib'
-)
-$linkerOptions = ($systemLibs + $stubObj) | ForEach-Object { "-H:NativeLinkerOption=$_" }
+New-Item -ItemType Directory -Force $target | Out-Null
 
 $imageArgs = @(
     '-cp', ((@($featureJar, $exampleJar) + $fxJars) -join ';'), # the feature jar enables itself via native-image.properties
@@ -59,7 +46,7 @@ $imageArgs = @(
     "-H:CLibraryPath=$fxLib",
     '-o', (Join-Path $target 'hellofx'),
     '-J-Xmx8g'
-) + $exports + $linkerOptions + @('us.hebi.graalvm.javafx.example.Launcher')
+) + $exports + @('us.hebi.graalvm.javafx.example.Launcher')
 
 Write-Host '== native-image'
 $sw = [Diagnostics.Stopwatch]::StartNew()

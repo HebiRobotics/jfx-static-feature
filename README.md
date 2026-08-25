@@ -13,6 +13,13 @@ The feature jar carries three things:
   (`prism_es2` instead of `prism_d3d`, plus `glassgtk3`, `javafx_font_freetype` and
   `javafx_font_pango`) and macOS eight (`prism_es2` and `prism_mtl` instead of `prism_d3d`).
 
+  The system libraries those archives reference are added the same way, as dynamic non-JNI
+  libraries: 22 on Windows, 16 on Linux, and `objc` and `c++` on macOS. `STATIC_BUILD` only drops
+  the link flags from the archive step, it does not vendor anything, so all of them stay dynamic
+  dependencies of the image and something has to name them. Doing it here keeps every consumer
+  from carrying the list. What is left over is linker syntax with no `NativeLibraries` API behind
+  it: the macOS frameworks and `-force_load`, and `g_thread_init` on Linux.
+
   It also registers the no-argument constructor of every reachable `Application` subclass, through
   `registerSubtypeReachabilityHandler`. Oracle's built-in `JavaFXFeature` registers the subclasses
   it finds for reflection but not that constructor, which is the one member
@@ -64,11 +71,13 @@ The feature jar carries three things:
   - `Target_com_sun_glass_ui_mac_MacVariant` (macOS) - `toString` appends to a variable of type
     Object, which the string concatenation outlining of GraalVM 25.0.4 fails to compile. Nothing
     calls it, so a shorter text keeps `-H:-OutlineIndyStringConcatenations` out of the build.
-- `src/main/c/foreign_platform_stubs_{windows,linux,macos}.c` - print-and-abort stubs for the other
-  platforms' font and image natives that the analysis keeps reachable and that the static libraries
-  of this platform do not contain. Nothing ever reaches them. The Linux file also stubs
-  `g_thread_init`, which glib dropped in 2.32 and glassgtk3 still references behind a run-time
-  version check.
+  - `Target_com_sun_javafx_font_{DFontDecoder,MacFontFinder,FontConfigManager}` and
+    `Target_com_sun_javafx_iio_ios_IosImageLoader` - the other platforms' font and image back ends,
+    which the analysis keeps reachable even though this platform's static libraries contain none of
+    their natives. Deleting them cuts the code out instead of stubbing the symbols in C.
+  - `Target_com_sun_javafx_font_PrismFontFactory` (Linux, macOS) - six natives of the shared base
+    class that only the Windows javafx_font library implements. The class itself cannot be deleted,
+    so they throw. Every caller is overridden by the Linux and macOS factories.
 
 `META-INF/native-image/us.hebi.graalvm/native-jfx-feature/native-image.properties` contributes only
 `--features=us.hebi.graalvm.javafx.JavaFXStaticFeature`. The `--add-exports` the feature needs stay
@@ -137,8 +146,6 @@ For your own app, on top of an ordinary native-image invocation:
 - the six `--add-exports=org.graalvm.nativeimage.builder/...=ALL-UNNAMED` from
   `scripts\build-hellofx.ps1`
 - `-H:CLibraryPath=<sdk>\lib` so the linker finds the static FX libraries
-- the 22 Windows system libs and `foreign_platform_stubs.obj` as `-H:NativeLinkerOption=...`
-  (the list is not minimized)
 - `-H:+UnlockExperimentalVMOptions`, `--no-fallback`
 
 No `-H:*ConfigurationFiles` and no `--initialize-at-run-time` are needed with the annotated SDK.
@@ -150,8 +157,10 @@ FX_SDK=<sdk> GRAAL_HOME=<graalvm> scripts/build-hellofx.sh
 target/hellofx
 ```
 
-The same recipe as on Windows, with the system libraries from `scripts/build-hellofx.sh` and
-`foreign_platform_stubs_linux.o` instead of the Windows ones.
+The same recipe as on Windows, plus
+`-H:NativeLinkerOption=-Wl,--defsym,g_thread_init=abort`: glib dropped `g_thread_init` in 2.32 and
+glassgtk3 still references it behind a run-time version check no current glib takes, so only the
+static link trips over the missing symbol.
 
 Building and running in a container, which is how this is developed from a Windows host:
 
