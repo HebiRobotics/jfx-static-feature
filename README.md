@@ -11,9 +11,20 @@ The feature jar carries three things:
   libraries of the target platform as static JNI libraries. Windows has seven (`glass`,
   `prism_common`, `prism_d3d`, `prism_sw`, `decora_sse`, `javafx_font`, `javafx_iio`), Linux ten
   (`prism_es2` instead of `prism_d3d`, plus `glassgtk3`, `javafx_font_freetype` and
-  `javafx_font_pango`) and macOS eight (`prism_es2` and `prism_mtl` instead of `prism_d3d`). It
-  also registers the `Application` subclass constructors, which Oracle's built-in `JavaFXFeature`
-  misses even though `Application.launch` uses them.
+  `javafx_font_pango`) and macOS eight (`prism_es2` and `prism_mtl` instead of `prism_d3d`).
+
+  It also registers the no-argument constructor of every reachable `Application` subclass, through
+  `registerSubtypeReachabilityHandler`. Oracle's built-in `JavaFXFeature` registers the subclasses
+  it finds for reflection but not that constructor, which is the one member
+  `LauncherImpl.launchApplication1` instantiates them through, so `getConstructor()` throws on a
+  class the reflection system otherwise knows about. The handler only fires for subclasses the
+  analysis already reached, and reaching one does not follow from the built-in feature registering
+  it: none of the twelve `Application` subclasses in `gui` that no launcher starts appear in the
+  hebi-charts image, which has that jar on its class path. Where they are reached the cost is real,
+  343 classes in a Scope image for the three subclasses `LogViewer` launches, but the shipped
+  library serves every launcher from one image and needs them. `registerSubtypeReachabilityHandler`
+  is public API in GraalVM 21 through 25.2, unlike the internal `findSubclasses` it replaced, which
+  25.2 removed.
 - Eight substitutions, each on the platform that needs it:
   - `Target_com_sun_javafx_font_directwrite_OS` (Windows) - Substrate resolves builtin JNI entry
     points by their short name only, so the four overloaded `directwrite.OS` methods can never

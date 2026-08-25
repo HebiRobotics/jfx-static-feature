@@ -92,10 +92,13 @@ public class JavaFXStaticFeature implements Feature {
             nativeLibraries.addStaticJniLibrary(library);
         }
 
-        // The built-in JavaFXFeature registers the Application subclasses themselves, but
-        // Application.launch instantiates them through their no-argument constructor.
-        accessImpl.findSubclasses(access.findClassByName("javafx.application.Application"))
-                .forEach(applicationClass -> RuntimeReflection.register(applicationClass.getDeclaredConstructors()));
+        // Application.launch instantiates the concrete subclass through its no-argument
+        // constructor, which the built-in JavaFXFeature does not register. The handler only
+        // fires for subclasses the analysis already reached, so an unused launcher in the
+        // same jar costs nothing.
+        access.registerSubtypeReachabilityHandler((duringAnalysis, applicationClass) ->
+                RuntimeReflection.register(applicationClass.getDeclaredConstructors()),
+                access.findClassByName("javafx.application.Application"));
     }
 
     private static List<String> staticLibraries() {
