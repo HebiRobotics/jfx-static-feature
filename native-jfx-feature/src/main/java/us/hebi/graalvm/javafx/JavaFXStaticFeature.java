@@ -27,6 +27,7 @@ public class JavaFXStaticFeature implements Feature {
             "com_sun_javafx_iio_jpeg",
             "com_sun_prism_d3d",
             "com_sun_prism_es2",
+            "com_sun_prism_mtl",
             "com_sun_prism_j2d",
             "com_sun_pisces",
             "com_sun_javafx_font",
@@ -56,6 +57,17 @@ public class JavaFXStaticFeature implements Feature {
             "javafx_font",
             "javafx_font_freetype",
             "javafx_font_pango",
+            "javafx_iio");
+
+    /** es2 is the default, prism_mtl is what -Dprism.order=mtl selects */
+    private static final List<String> MACOS_LIBRARIES = List.of(
+            "glass",
+            "prism_common",
+            "prism_es2",
+            "prism_mtl",
+            "prism_sw",
+            "decora_sse",
+            "javafx_font",
             "javafx_iio");
 
     @Override
@@ -91,6 +103,8 @@ public class JavaFXStaticFeature implements Feature {
             return WINDOWS_LIBRARIES;
         } else if (Platform.includedIn(Platform.LINUX.class)) {
             return LINUX_LIBRARIES;
+        } else if (Platform.includedIn(Platform.MACOS.class)) {
+            return MACOS_LIBRARIES;
         }
         throw new UnsupportedOperationException("No static JavaFX libraries known for this platform");
     }
