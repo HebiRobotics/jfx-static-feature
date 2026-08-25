@@ -29,6 +29,13 @@
             <version>${graalvm.version}</version>
             <scope>provided</scope>
         </dependency>
+        <!-- The LauncherImpl substitution restates its argument checks against the FX types -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
 </project>
