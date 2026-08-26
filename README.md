@@ -24,9 +24,9 @@ Gradle resolve it the same way and nothing has to detect the host.
 
 The feature has its own version line and pulls in the JavaFX build as a transitive dependency,
 `jfx-static-libs`, a separate artifact versioned by the JavaFX release it was compiled from. The
-feature pins the one it was tested with, and a consumer picks another JavaFX by naming that
-artifact directly, the nearer declaration wins. The substitutions have not had to follow a JavaFX
-change in years, so nothing else moves:
+feature pins the one it was tested with, and a consumer picks another JavaFX, say a 26.0.1, by
+naming that artifact directly, the nearer declaration wins. The substitutions have not had to
+follow a JavaFX change in years:
 
 ```xml
 <dependency>
@@ -227,6 +227,20 @@ For your own app, the dependency from the top of this file plus `native-maven-pl
 `fallback` off. No `-H:*ConfigurationFiles`, no build arguments and no
 `--initialize-at-run-time` are needed, and the plugin's `metadataRepository` can stay off: the
 dependencies carry everything JavaFX needs. Verified with Oracle GraalVM 25.0.1 and 25.3.
+
+## Releasing
+
+The two artifacts are released separately, each from its own module with the `release` profile,
+which adds the sources and javadoc jars, signs with the `gpg.keyname` from `settings.xml` and
+uploads through the `central` server entry:
+
+```
+mvn -Prelease deploy -pl jfx-static-libs
+mvn -Prelease deploy -pl jfx-static-feature
+```
+
+`jfx-static-libs` only when the archive changed, with `fx.commit` bumped and the version suffixed
+(`26-1`) if the JavaFX release stayed the same. The examples and the aggregator are never deployed.
 
 ## Using it on Linux
 
