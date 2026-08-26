@@ -24,7 +24,7 @@ reflection but not the constructor `LauncherImpl` calls.
 
 | Path | Content |
 |---|---|
-| `us/hebi/graalvm/jfx/natives/<platform>/` | The `lib*.a` (`*.lib` on Windows) of `windows-x86_64`, `linux-x86_64`, `linux-aarch64`, `darwin-x86_64` and `darwin-aarch64`, spelled the way Gluon Substrate spells its targets |
+| `us/hebi/graalvm/jfx/libs/<platform>/` | The `lib*.a` (`*.lib` on Windows) of `windows-x86_64`, `linux-x86_64`, `linux-aarch64`, `darwin-x86_64` and `darwin-aarch64`, spelled the way Gluon Substrate spells its targets |
 | `META-INF/native-image/reachability-generated/org.openjfx/<module>/` | `jni-config.json`, `reflect-config.json` and `resource-config.json` of `javafx.base`, `javafx.graphics`, `javafx.controls`, `javafx.fxml`, `jfx.incubator.input` and `jfx.incubator.richtext` |
 | `META-INF/legal/` | GPLv2, the Classpath Exception and the third party notices for what the archives contain |
 | `META-INF/NOTICE` | The `ennerf/jfx` commit the archives were built from |

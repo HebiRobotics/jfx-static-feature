@@ -132,7 +132,7 @@ inclusion lists, so a future iOS or Android port does not silently keep them.
 
 `jfx-static-libs` is one JavaFX build, versioned by it, in a single 10 MB jar with no classifier.
 It holds every platform's `lib*.a` (`*.lib` on Windows) under
-`us/hebi/graalvm/jfx/natives/<platform>/` for `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
+`us/hebi/graalvm/jfx/libs/<platform>/` for `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
 `darwin-x86_64` and `darwin-aarch64`, spelled the way Gluon Substrate spells its targets. The
 feature unpacks the ones it needs into the builder's temp directory in `beforeAnalysis` and adds
 that directory to `NativeLibraries.getLibraryPaths()`, the same set `-H:CLibraryPath` feeds and

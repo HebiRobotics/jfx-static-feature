@@ -91,7 +91,7 @@
                                     <attribute name="platform"/>
                                     <sequential>
                                         <unzip src="${fx.zip}"
-                                               dest="${project.build.outputDirectory}/us/hebi/graalvm/jfx/natives/@{platform}">
+                                               dest="${project.build.outputDirectory}/us/hebi/graalvm/jfx/libs/@{platform}">
                                             <patternset>
                                                 <include name="@{platform}/sdk/lib/*.a"/>
                                                 <include name="@{platform}/sdk/lib/*.lib"/>

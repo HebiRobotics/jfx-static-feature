@@ -95,7 +95,7 @@ public class JfxStaticFeature implements Feature {
             "Network", "Metal", "CoreText", "CoreGraphics", "CoreFoundation");
 
     // Where jfx-static-libs keeps the archives of every platform
-    private static final String NATIVES_RESOURCES = "/us/hebi/graalvm/jfx/natives/";
+    private static final String LIBS_RESOURCES = "/us/hebi/graalvm/jfx/libs/";
 
     // Where beforeAnalysis unpacked the archives, needed again for the macOS -force_load
     private Path staticLibraryDirectory;
@@ -111,7 +111,7 @@ public class JfxStaticFeature implements Feature {
             System.out.println("JfxStaticFeature: no static JavaFX libraries known for this platform, staying off");
             return false;
         }
-        if (JfxStaticFeature.class.getResource(nativesResource(staticLibraries().get(0))) == null) {
+        if (JfxStaticFeature.class.getResource(libsResource(staticLibraries().get(0))) == null) {
             System.out.println("JfxStaticFeature: no jfx-static-libs jar for " + platform + " on the class path, staying off");
             return false;
         }
@@ -202,7 +202,7 @@ public class JfxStaticFeature implements Feature {
             Files.createDirectories(directory);
             for (String library : staticLibraries()) {
                 String fileName = staticLibraryFileName(library);
-                try (InputStream resource = JfxStaticFeature.class.getResourceAsStream(nativesResource(library))) {
+                try (InputStream resource = JfxStaticFeature.class.getResourceAsStream(libsResource(library))) {
                     if (resource == null) {
                         throw new IOException("Missing " + fileName + " in the jfx-static-libs jar");
                     }
@@ -215,8 +215,8 @@ public class JfxStaticFeature implements Feature {
         return directory;
     }
 
-    private static String nativesResource(String library) {
-        return NATIVES_RESOURCES + platformName() + "/" + staticLibraryFileName(library);
+    private static String libsResource(String library) {
+        return LIBS_RESOURCES + platformName() + "/" + staticLibraryFileName(library);
     }
 
     // Matches NativeLibraries::getStaticLibraryName
