@@ -22,7 +22,7 @@ jobs:
           # One row on the previous minor, so a moved GraalVM internal shows up here first
           - os: windows-latest
             platform: windows-x86_64
-            graalvm: "25.0"
+            graalvm: "25"
           - os: ubuntu-latest
             platform: linux-x86_64
             graalvm: "25"
