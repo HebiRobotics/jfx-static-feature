@@ -41,18 +41,16 @@ here.
 ## Building it
 
 The input is the combined static SDK archive that the fork's `build-static-libs` workflow
-produces, every platform's SDK under its own directory. Put it next to this pom as
-`openjfx-26-internal-static.zip`, or name it with `-Dfx.zip=<archive>`, then
-
-```
-mvn install
-```
+publishes as the GitHub release `<fx.version>-<fx.commit>`, every platform's SDK under its own
+directory. `mvn install` downloads it next to this pom on the first run, or takes an existing one
+there or the one named with `-Dfx.zip=<archive>`.
 
 There is no reactor dependency in either direction: this pom has no parent, and the feature pulls
 the installed artifact by version like any other consumer. The build takes the archives of every
 platform, the metadata and the legal texts out of one reference SDK (`fx.reference.platform`,
 Linux, because it is the only SDK that carries `gcc.md`), and records `fx.commit` in
-`META-INF/NOTICE`. Bump `fx.commit` together with the archive.
+`META-INF/NOTICE`. A new build is a new `fx.commit`, which is part of the archive name, so the
+next build downloads it by itself.
 
 ## License
 

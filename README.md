@@ -148,12 +148,12 @@ own `Application` subclass on top, since Oracle's built-in `JavaFXFeature` regis
 for reflection but not the no-argument constructor the launcher instantiates them through. Naming
 it, with or without the feature, is the whole story of moving to a later JavaFX.
 
-It builds on any host from the combined static SDK archive the jfx CI workflow produces, which
-holds every platform's SDK under its own directory. `fx.zip` names it and defaults to
-`openjfx-26-internal-static.zip` next to the module's own pom, relative to the pom rather than the
-reactor so a standalone release build finds it; a missing archive fails the build. The metadata and
-the license texts are byte identical in every platform's SDK, so both come out of the one
-`fx.reference.platform` names, which is the Linux one because it is the only SDK carrying `gcc.md`.
+It builds on any host from the combined static SDK archive the jfx CI workflow publishes as a
+GitHub release named `<fx.version>-<fx.commit>`, every platform's SDK under its own directory.
+The pom downloads it next to itself when it is missing, `fx.zip` names an existing one. The
+metadata and the license texts are byte identical in every platform's SDK, so both come out of the
+one `fx.reference.platform` names, which is the Linux one because it is the only SDK carrying
+`gcc.md`.
 
 The archives are OpenJFX build output under GPLv2 with the Classpath Exception. `META-INF/legal/`
 carries the license, the exception and the third party notices for what is actually in them, and

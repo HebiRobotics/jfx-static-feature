@@ -48,10 +48,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- The combined static SDK archive of the ennerf/jfx CI build, every platform in its own directory -->
-        <fx.zip>${project.basedir}/openjfx-${project.version}-internal-static.zip</fx.zip>
-        <!-- Recorded in META-INF/NOTICE -->
-        <fx.commit>ee5a159a3b</fx.commit>
+        <!-- The combined static SDK of the ennerf/jfx build, published as the release <fx.version>-<fx.commit> -->
+        <fx.version>26-internal</fx.version>
+        <fx.commit>86d493f5f5</fx.commit>
+        <fx.zip>${project.basedir}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.zip>
+        <fx.url>https://github.com/ennerf/jfx/releases/download/${fx.version}-${fx.commit}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.url>
         <!-- Metadata and legal texts are the same in every SDK, Linux is the only one with gcc.md -->
         <fx.reference.platform>linux-x86_64</fx.reference.platform>
         <fx.reference.lib>${fx.reference.platform}/sdk/lib</fx.reference.lib>
@@ -79,13 +80,7 @@
                         </goals>
                         <configuration>
                             <target>
-                                <fail message="No static JavaFX SDK at ${fx.zip}, pass -Dfx.zip=&lt;archive&gt;">
-                                    <condition>
-                                        <not>
-                                            <available file="${fx.zip}" type="file"/>
-                                        </not>
-                                    </condition>
-                                </fail>
+                                <get src="${fx.url}" dest="${fx.zip}" skipexisting="true"/>
 
                                 <!-- Every platform in one jar, so there is no classifier -->
                                 <macrodef name="unpack-platform">

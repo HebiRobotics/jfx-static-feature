@@ -24,6 +24,8 @@
         <javafx.version>26</javafx.version>
         <jfx.static.feature.version>1.0-SNAPSHOT</jfx.static.feature.version>
         <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
+        <maven.install.skip>true</maven.install.skip> <!-- examples are only built -->
+        <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
     <dependencies>

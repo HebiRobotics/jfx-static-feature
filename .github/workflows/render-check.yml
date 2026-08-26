@@ -5,15 +5,6 @@ name: render check
 on:
   push:
   workflow_dispatch:
-    inputs:
-      sdk-url:
-        description: Directory URL the openjfx-<version>-internal-static.zip archive is downloaded from
-        required: false
-
-env:
-  # The ennerf/jfx archive is not on Central, so a run needs the FX_STATIC_SDK_URL variable or the dispatch input
-  SDK_URL: ${{ github.event.inputs.sdk-url || vars.FX_STATIC_SDK_URL }}
-  FX_VERSION: "26"
 
 jobs:
 
@@ -60,16 +51,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev libpango1.0-dev xvfb
 
-      - name: download the static SDK
-        shell: bash
-        run: |
-          if [ -z "$SDK_URL" ]; then
-            echo "Set the FX_STATIC_SDK_URL repository variable to the directory holding the ennerf/jfx static SDK archive"
-            exit 1
-          fi
-          zip="openjfx-$FX_VERSION-internal-static.zip"
-          curl -fsSL -o "jfx-static-libs/$zip" "$SDK_URL/$zip"
-
       - name: build the render check
         run: mvn -B -Pnative package -pl jfx-static-examples/example-headless -am
 
@@ -104,16 +85,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev libpango1.0-dev xvfb
-
-      - name: download the static SDK
-        shell: bash
-        run: |
-          if [ -z "$SDK_URL" ]; then
-            echo "Set the FX_STATIC_SDK_URL repository variable to the directory holding the ennerf/jfx static SDK archive"
-            exit 1
-          fi
-          zip="openjfx-$FX_VERSION-internal-static.zip"
-          curl -fsSL -o "jfx-static-libs/$zip" "$SDK_URL/$zip"
 
       - name: build hellofx
         run: mvn -B -Pnative package -pl jfx-static-examples/example-hellofx -am
