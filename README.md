@@ -1,21 +1,65 @@
-# native-jfx-feature
+# jfx-static-feature
 
-GraalVM native-image support for a statically linked JavaFX 26 on Windows, Linux x86_64 and macOS
-aarch64. The image contains the FX native code, so on Windows the executable runs from an empty
-directory with no FX DLLs next to it. On Linux the GTK stack and on macOS the system frameworks
-stay dynamic, see below.
+GraalVM native-image support for a statically linked JavaFX 26. The image contains the FX native
+code, so on Windows the executable runs from an empty directory with no FX DLLs next to it. On
+Linux the GTK stack and on macOS the system frameworks stay dynamic, see below.
+
+Keep the ordinary `org.openjfx` dependencies from Maven Central and add one line to the
+native-image build:
+
+```xml
+<dependency>
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jfx-static-feature</artifactId>
+    <version>1.0</version>
+</dependency>
+```
+
+Nothing else: no `--add-exports`, no `-H:CLibraryPath`, no linker flags, no classifier, no OS
+profile, no config files. The feature depends on `jfx-static-libs`, which carries the JavaFX
+reachability metadata and every platform's static archives in one unclassified jar, so Maven and
+Gradle resolve it the same way and nothing has to detect the host.
+
+### Versions
+
+The feature has its own version line and pulls in the JavaFX build as a transitive dependency,
+`jfx-static-libs`, a separate artifact versioned by the JavaFX release it was compiled from. The
+feature pins the one it was tested with, and a consumer picks another JavaFX by naming that
+artifact directly, the nearer declaration wins. The substitutions have not had to follow a JavaFX
+change in years, so nothing else moves:
+
+```xml
+<dependency>
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jfx-static-libs</artifactId>
+    <version>26.0.1</version>
+</dependency>
+```
+
+`jfx-static-examples/hellofx` is the whole recipe, its parent pom holds the dependencies and the
+plugin setup and `mvn -Pnative package` there produces a running executable. `headless` is the
+same thing without a display: it renders a fixed scene on the headless glass platform, checks its
+own pixels and writes the snapshot as a PNG, which is what `.github/workflows/render-check.yml`
+runs on all five platforms. The windowed pipelines need a real session and stay a manual check.
+
+Linked and run on all five platforms: `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
+`darwin-x86_64` and `darwin-aarch64`.
 
 ## What the feature does
 
-`JavaFXStaticFeature` tells native-image that the JavaFX natives are compiled into the image rather
+`JfxStaticFeature` tells native-image that the JavaFX natives are compiled into the image rather
 than loaded from a DLL. It registers the FX JNI package prefixes as builtin, adds the platform's
 static FX libraries as static JNI libraries (seven on Windows, ten on Linux, eight on macOS, see
 the SDK sections below), and adds the system libraries those archives reference as dynamic
 libraries: `STATIC_BUILD` only drops the link flags from the archive step, it does not vendor
 anything, so GTK on Linux and the Cocoa frameworks on macOS stay dynamic dependencies that
-something has to name. Naming them here keeps every consumer from carrying the list. Only what has
-no `NativeLibraries` API behind it stays in the build scripts: the macOS frameworks and
-`-force_load`, and `g_thread_init` on Linux.
+something has to name. Naming them here keeps every consumer from carrying the list. What has no
+`NativeLibraries` API behind it goes through a linker invocation transformer in `beforeImageWrite`:
+the macOS frameworks and the `-force_load` of `libglass.a`, and `g_thread_init` on Linux.
+
+The archives themselves come out of the `jfx-static-libs` jar, see below. Without one for the
+platform on the class path the feature logs a line and switches itself off, so an image that loads
+JavaFX dynamically is unaffected by the feature jar being around.
 
 It also registers the no-argument constructor of every reachable `Application` subclass. Oracle's
 built-in `JavaFXFeature` registers the subclasses for reflection but not the constructor, which is
@@ -83,13 +127,44 @@ be deleted, so its six Windows-only natives throw instead; every caller is overr
 and macOS factories. The conditions are negations (`NotLinux` etc.) rather than `@Platforms`
 inclusion lists, so a future iOS or Android port does not silently keep them.
 
+### The JavaFX artifacts
+
+`jfx-static-libs` is one JavaFX build, versioned by it, in a single 10 MB jar with no classifier.
+It holds every platform's `lib*.a` (`*.lib` on Windows) under
+`us/hebi/graalvm/jfx/natives/<platform>/` for `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
+`darwin-x86_64` and `darwin-aarch64`, spelled the way Gluon Substrate spells its targets. The
+feature unpacks the ones it needs into the builder's temp directory in `beforeAnalysis` and adds
+that directory to `NativeLibraries.getLibraryPaths()`, the same set `-H:CLibraryPath` feeds and
+what `getStaticLibraries()` searches at link time. The other platforms' archives cost a download
+and nothing else: no resource configuration names them, so they never enter an image.
+
+It also carries the reachability metadata the fork's SDK generates into
+`META-INF/native-image/reachability-generated/org.openjfx/javafx.*/`, which native-image reads off
+the class path by itself and Central's `org.openjfx` jars do not have. **That makes the artifact
+useful on its own**: added without the feature it gives an ordinary dynamic JavaFX image the
+metadata it would otherwise need a tracing agent for, and such an image only has to register its
+own `Application` subclass on top, since Oracle's built-in `JavaFXFeature` registers the subtypes
+for reflection but not the no-argument constructor the launcher instantiates them through. Naming
+it, with or without the feature, is the whole story of moving to a later JavaFX.
+
+It builds on any host from the combined static SDK archive the jfx CI workflow produces, which
+holds every platform's SDK under its own directory. `fx.zip` names it and defaults to
+`openjfx-26-internal-static.zip` next to the module's own pom, relative to the pom rather than the
+reactor so a standalone release build finds it; a missing archive fails the build. The metadata and
+the license texts are byte identical in every platform's SDK, so both come out of the one
+`fx.reference.platform` names, which is the Linux one because it is the only SDK carrying `gcc.md`.
+
+The archives are OpenJFX build output under GPLv2 with the Classpath Exception. `META-INF/legal/`
+carries the license, the exception and the third party notices for what is actually in them, and
+`META-INF/NOTICE` names the `ennerf/jfx` commit they were built from.
+
 ### Wiring
 
-`META-INF/native-image/us.hebi.graalvm/native-jfx-feature/native-image.properties` contributes only
-`--features=us.hebi.graalvm.javafx.JavaFXStaticFeature`. The `--add-exports` the feature needs stay
-in the build script, since it is unverified whether native-image applies them from a properties
-file early enough to load the feature class. macOS needs one more than the other two, for the JNI
-environment and object handles the coretext and MacTimer substitutions pass on.
+`META-INF/native-image/us.hebi.graalvm/jfx-static-feature/native-image.properties` contributes
+`--features=us.hebi.graalvm.jfx.JfxStaticFeature` and the nine `--add-exports` the feature
+and the substitutions need for the image builder internals, which the driver applies before it
+loads the feature class. A jar's `Add-Exports` manifest attribute would be the tidier place, but
+the driver only reads that one off the `-jar` main jar, not off class path entries.
 
 ## Building the static JavaFX 26 SDK on Windows
 
@@ -138,35 +213,39 @@ JAVA_HOME=<jdk> bash gradlew --no-daemon \
 `prism_sw`, `decora_sse`, `javafx_font` and `javafx_iio`. There is no separate glass backend
 library the way Linux has `glassgtk3`, the Cocoa one is in `libglass.a`.
 
-## Using it on Windows
+## Building an image
 
-```powershell
-scripts\build-hellofx.ps1                      # -FxSdk and -GraalHome override the defaults
-target\hellofx.exe
+The same command everywhere, from a shell that has the platform's C toolchain (`vcvars64.bat` on
+Windows) and a GraalVM 25 in `JAVA_HOME`:
+
+```
+mvn -Pnative package -pl jfx-static-examples/hellofx -am
 ```
 
-For your own app, on top of an ordinary native-image invocation:
-
-- `-cp` with the static SDK's `javafx.*.jar` files, the feature jar and your classes
-- the feature enables itself through the jar's `native-image.properties`
-- the six `--add-exports=org.graalvm.nativeimage.builder/...=ALL-UNNAMED` from
-  `scripts\build-hellofx.ps1`
-- `-H:CLibraryPath=<sdk>\lib` so the linker finds the static FX libraries
-- `-H:+UnlockExperimentalVMOptions`, `--no-fallback`
-
-No `-H:*ConfigurationFiles` and no `--initialize-at-run-time` are needed with the annotated SDK.
+For your own app, the dependency from the top of this file plus `native-maven-plugin` with
+`fallback` off. No `-H:*ConfigurationFiles`, no build arguments and no
+`--initialize-at-run-time` are needed, and the plugin's `metadataRepository` can stay off: the
+dependencies carry everything JavaFX needs. Verified with Oracle GraalVM 25.0.1 and 25.3.
 
 ## Using it on Linux
 
+The feature adds one linker option of its own here,
+`-Wl,--defsym,g_thread_init=0`: glib dropped `g_thread_init` in 2.32 and glassgtk3 still
+references it behind a run-time version check no current glib takes, so only the static link trips
+over the missing symbol. The value is absolute rather than `abort`, which ld accepts only where
+`abort` is already defined at that point in the link.
+
+The link needs the **development** packages of the GTK stack, not just the runtime ones: `-lgtk-3`
+and eleven more resolve through the `libfoo.so` symlink that only a `-dev` package installs. On
+Debian and Ubuntu this covers all of them, since `libgtk-3-dev` pulls in the cairo, pango,
+gdk-pixbuf, glib and X11 development packages:
+
 ```bash
-FX_SDK=<sdk> GRAAL_HOME=<graalvm> scripts/build-hellofx.sh
-target/hellofx
+apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev
 ```
 
-The same recipe as on Windows, plus
-`-H:NativeLinkerOption=-Wl,--defsym,g_thread_init=abort`: glib dropped `g_thread_init` in 2.32 and
-glassgtk3 still references it behind a run-time version check no current glib takes, so only the
-static link trips over the missing symbol.
+Without them native-image completes all eight of its stages, reports no undefined symbol, and then
+fails in `ld` with `cannot find -lgtk-3`.
 
 Building and running in a container, which is how this is developed from a Windows host:
 
@@ -174,8 +253,7 @@ Building and running in a container, which is how this is developed from a Windo
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential zlib1g-dev maven ca-certificates curl \
-        libgtk-3-0 libcairo2 libpango-1.0-0 libpangoft2-1.0-0 libfreetype6 \
-        libxtst6 libxxf86vm1 libgl1 libglx-mesa0 \
+        libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev \
         xvfb x11-utils libgl1-mesa-dri fonts-dejavu-core
 RUN mkdir -p /opt/graalvm && curl -fsSL \
         "https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz" \
@@ -184,10 +262,9 @@ ENV JAVA_HOME=/opt/graalvm PATH=/opt/graalvm/bin:$PATH
 ```
 
 ```powershell
-docker run -d --name jfxlink -m 12g --cpus 16 `
-    -v "<repo>:/repo" -v "<sdk>:/sdk:ro" jfx-linux-link sleep infinity
-docker exec jfxlink bash -c 'cd /repo && bash scripts/build-hellofx.sh'
-docker exec jfxlink bash -c 'cd /repo/target && xvfb-run -a ./hellofx'
+docker run -d --name jfxlink -m 12g --cpus 16 -v "<repo>:/repo" jfx-linux-link sleep infinity
+docker exec jfxlink bash -c 'cd /repo && mvn -Pnative package -pl jfx-static-examples/hellofx -am'
+docker exec jfxlink bash -c 'cd /repo/jfx-static-examples/hellofx/target && xvfb-run -a ./hellofx'
 ```
 
 ### What is static and what is not
@@ -204,13 +281,7 @@ container without a GPU either falls back to the software pipeline or needs `-Dp
 
 ## Using it on macOS
 
-```bash
-FX_SDK=<sdk> GRAAL_HOME=<graalvm> scripts/build-hellofx.sh
-target/hellofx
-```
-
-The same script as on Linux, which picks the macOS stubs, frameworks and libraries by `uname`. Two
-things are different from the other platforms:
+Two things the feature does only here:
 
 - The frameworks the image links against are the ones `buildSrc/mac.gradle` uses for the dynamic
   build (AppKit, ApplicationServices, Carbon, OpenGL, QuartzCore, Security, Network, Metal) plus

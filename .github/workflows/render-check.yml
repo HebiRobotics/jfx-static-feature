@@ -1,0 +1,134 @@
+# Builds a native image on every platform the feature ships archives for and proves that it
+# renders, so that a feature or SDK change that breaks one of them is caught without anyone's Mac
+# or Pi. The windowed pipelines (d3d on Windows, es2 and mtl on macOS) need a real session and stay
+# a manual pre-release check; CI covers the link, the loader substitutions and the software render.
+name: render check
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      sdk-url:
+        description: Directory URL the openjfx-<version>-internal-static.zip archive is downloaded from
+        required: false
+
+env:
+  # The combined static SDK archive of the ennerf/jfx build, which is the input to jfx-static-libs.
+  # It is not on Central, so a run needs either the FX_STATIC_SDK_URL variable or the dispatch input.
+  SDK_URL: ${{ github.event.inputs.sdk-url || vars.FX_STATIC_SDK_URL }}
+  FX_VERSION: "26"
+
+jobs:
+
+  render-check:
+    name: ${{ matrix.platform }} on GraalVM ${{ matrix.graalvm }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x86_64
+            graalvm: "25"
+          # One row on the previous minor, so that a GraalVM internal that moves shows up here
+          # rather than in a consumer's build
+          - os: windows-latest
+            platform: windows-x86_64
+            graalvm: "25.0"
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            graalvm: "25"
+          - os: ubuntu-24.04-arm
+            platform: linux-aarch64
+            graalvm: "25"
+          - os: macos-13
+            platform: darwin-x86_64
+            graalvm: "25"
+          - os: macos-latest
+            platform: darwin-aarch64
+            graalvm: "25"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: ${{ matrix.graalvm }}
+          distribution: graalvm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The image links against GTK, X11 and GL even when it only renders headless, since the
+      # feature adds the whole platform library set
+      - name: install the link dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev libpango1.0-dev xvfb
+
+      - name: download the static SDK
+        shell: bash
+        run: |
+          if [ -z "$SDK_URL" ]; then
+            echo "Set the FX_STATIC_SDK_URL repository variable to the directory holding the ennerf/jfx static SDK archive"
+            exit 1
+          fi
+          zip="openjfx-$FX_VERSION-internal-static.zip"
+          curl -fsSL -o "jfx-static-libs/$zip" "$SDK_URL/$zip"
+
+      - name: build the render check
+        run: mvn -B -Pnative package -pl jfx-static-examples/headless -am
+
+      - name: run the render check
+        shell: bash
+        run: |
+          cd jfx-static-examples/headless/target
+          ./render-check render-check.png
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-check-${{ matrix.platform }}-graalvm${{ matrix.graalvm }}
+          path: jfx-static-examples/headless/target/render-check.png
+          if-no-files-found: warn
+
+  # The headless platform loads no glass native at all, so one job still has to run the windowed
+  # app. Linux is the only runner that can: Xvfb gives it a display, and it is the backend nobody
+  # exercises otherwise.
+  gtk-window:
+    name: hellofx on glassgtk3
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "25"
+          distribution: graalvm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: install the link dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev libpango1.0-dev xvfb
+
+      - name: download the static SDK
+        shell: bash
+        run: |
+          if [ -z "$SDK_URL" ]; then
+            echo "Set the FX_STATIC_SDK_URL repository variable to the directory holding the ennerf/jfx static SDK archive"
+            exit 1
+          fi
+          zip="openjfx-$FX_VERSION-internal-static.zip"
+          curl -fsSL -o "jfx-static-libs/$zip" "$SDK_URL/$zip"
+
+      - name: build hellofx
+        run: mvn -B -Pnative package -pl jfx-static-examples/hellofx -am
+
+      # The app runs until it is closed, so the timeout is the success path and the pipeline line
+      # is the assertion
+      - name: show the window
+        run: |
+          cd jfx-static-examples/hellofx/target
+          timeout 30 xvfb-run -a ./hellofx -Dprism.verbose=true | tee hellofx.log || true
+          grep "Initialized prism pipeline" hellofx.log

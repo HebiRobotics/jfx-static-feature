@@ -4,26 +4,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Aggregator only, for one-command builds and IDEs. The modules are released on their own clocks and inherit nothing -->
     <groupId>us.hebi.graalvm</groupId>
-    <artifactId>native-jfx-parent</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <artifactId>jfx-static-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>native-jfx-parent</name>
+    <name>jfx-static-parent</name>
     <description>Native image support for the statically built JavaFX SDK</description>
 
     <modules>
-        <module>native-jfx-feature</module>
-        <module>hellofx-example</module>
+        <module>jfx-static-libs</module>
+        <module>jfx-static-feature</module>
+        <module>jfx-static-examples</module>
     </modules>
-
-    <properties>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <!-- Matches the GraalVM the images are built with (Oracle GraalVM 25.0.1) -->
-        <graalvm.version>25.0.1</graalvm.version>
-        <javafx.version>26</javafx.version>
-    </properties>
 
 </project>

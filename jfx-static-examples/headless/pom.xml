@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>us.hebi.graalvm</groupId>
+        <artifactId>jfx-static-examples</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>headless</artifactId>
+
+    <name>headless</name>
+    <description>Offscreen render check that CI runs on every platform</description>
+
+    <properties>
+        <skipNativeBuild>false</skipNativeBuild>
+    </properties>
+
+    <!-- Renders without a display and asserts on its own pixels, so it is the one every CI runner can execute -->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <configuration>
+                    <imageName>render-check</imageName>
+                    <mainClass>us.hebi.graalvm.jfx.example.HeadlessRenderCheck</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
