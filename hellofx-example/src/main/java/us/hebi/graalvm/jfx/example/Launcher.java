@@ -1,4 +1,4 @@
-package us.hebi.graalvm.javafx.example;
+package us.hebi.graalvm.jfx.example;
 
 import javafx.application.Application;
 

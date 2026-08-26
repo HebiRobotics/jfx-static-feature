@@ -1,4 +1,4 @@
-package us.hebi.graalvm.javafx.substitutions;
+package us.hebi.graalvm.jfx.substitutions;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 

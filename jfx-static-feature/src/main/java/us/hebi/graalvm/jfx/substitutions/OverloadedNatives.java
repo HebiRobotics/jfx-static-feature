@@ -1,4 +1,4 @@
-package us.hebi.graalvm.javafx.substitutions;
+package us.hebi.graalvm.jfx.substitutions;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

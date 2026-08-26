@@ -1,4 +1,4 @@
-package us.hebi.graalvm.javafx.stubs;
+package us.hebi.graalvm.jfx.stubs;
 
 import java.util.function.BooleanSupplier;
 

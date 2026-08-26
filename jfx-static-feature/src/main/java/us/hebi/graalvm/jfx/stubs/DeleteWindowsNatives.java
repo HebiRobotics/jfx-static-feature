@@ -1,4 +1,4 @@
-package us.hebi.graalvm.javafx.stubs;
+package us.hebi.graalvm.jfx.stubs;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
