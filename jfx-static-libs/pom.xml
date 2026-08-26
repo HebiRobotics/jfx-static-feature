@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- No parent: versioned by the JavaFX build it was made from and released on its own clock -->
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jfx-static-libs</artifactId>
+    <version>26</version>
+
+    <name>jfx-static-libs</name>
+    <description>Static JavaFX libraries and reachability metadata of one JavaFX release, for every platform</description>
+    <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <organization>
+        <name>HEBI Robotics</name>
+        <url>http://www.hebirobotics.com</url>
+    </organization>
+
+    <scm>
+        <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+        <connection>scm:git:git://github.com/HebiRobotics/jfx-static-feature.git</connection>
+        <developerConnection>scm:git:git@github.com:HebiRobotics/jfx-static-feature.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <!-- OpenJFX build output, so it carries the OpenJFX license -->
+    <licenses>
+        <license>
+            <name>GNU General Public License, version 2, with the Classpath Exception</name>
+            <url>https://openjdk.org/legal/gplv2+ce.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ennerf</id>
+            <name>Florian Enner</name>
+            <email>florian at hebirobotics.com</email>
+            <url>https://github.com/ennerf</url>
+            <organization>HEBI Robotics</organization>
+            <organizationUrl>https://github.com/HebiRobotics</organizationUrl>
+        </developer>
+    </developers>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- The combined static SDK archive of the ennerf/jfx CI build, every platform under its own directory -->
+        <fx.zip>${project.basedir}/openjfx-${project.version}-internal-static.zip</fx.zip>
+        <!-- The ennerf/jfx commit the archive was built from, recorded in META-INF/NOTICE -->
+        <fx.commit>ee5a159a3b</fx.commit>
+        <!-- Metadata and legal texts are identical in every SDK, so one is the source. Linux is the only one with gcc.md -->
+        <fx.reference.platform>linux-x86_64</fx.reference.platform>
+        <fx.reference.lib>${fx.reference.platform}/sdk/lib</fx.reference.lib>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>unpack-static-sdk</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <fail message="No static JavaFX SDK at ${fx.zip}, pass -Dfx.zip=&lt;archive&gt;">
+                                    <condition>
+                                        <not>
+                                            <available file="${fx.zip}" type="file"/>
+                                        </not>
+                                    </condition>
+                                </fail>
+
+                                <!-- One jar for every platform, so a consumer names no classifier -->
+                                <macrodef name="unpack-platform">
+                                    <attribute name="platform"/>
+                                    <sequential>
+                                        <unzip src="${fx.zip}"
+                                               dest="${project.build.outputDirectory}/us/hebi/graalvm/jfx/natives/@{platform}">
+                                            <patternset>
+                                                <include name="@{platform}/sdk/lib/*.a"/>
+                                                <include name="@{platform}/sdk/lib/*.lib"/>
+                                            </patternset>
+                                            <mapper type="flatten"/>
+                                        </unzip>
+                                    </sequential>
+                                </macrodef>
+                                <unpack-platform platform="windows-x86_64"/>
+                                <unpack-platform platform="linux-x86_64"/>
+                                <unpack-platform platform="linux-aarch64"/>
+                                <unpack-platform platform="darwin-x86_64"/>
+                                <unpack-platform platform="darwin-aarch64"/>
+
+                                <!-- The metadata of every annotated module. native-image reads it off any class path jar -->
+                                <unzip src="${fx.zip}" dest="${project.build.directory}/fx-jars">
+                                    <patternset>
+                                        <include name="${fx.reference.lib}/javafx.base.jar"/>
+                                        <include name="${fx.reference.lib}/javafx.graphics.jar"/>
+                                        <include name="${fx.reference.lib}/javafx.controls.jar"/>
+                                        <include name="${fx.reference.lib}/javafx.fxml.jar"/>
+                                        <include name="${fx.reference.lib}/jfx.incubator.input.jar"/>
+                                        <include name="${fx.reference.lib}/jfx.incubator.richtext.jar"/>
+                                    </patternset>
+                                    <mapper type="flatten"/>
+                                </unzip>
+                                <unzip dest="${project.build.outputDirectory}">
+                                    <fileset dir="${project.build.directory}/fx-jars" includes="*.jar"/>
+                                    <patternset>
+                                        <include name="META-INF/native-image/reachability-generated/**"/>
+                                    </patternset>
+                                </unzip>
+
+                                <!-- GPLv2 with the Classpath Exception plus the third party notices of what is in the archives -->
+                                <unzip src="${fx.zip}" dest="${project.build.outputDirectory}/META-INF">
+                                    <patternset>
+                                        <include name="${fx.reference.platform}/sdk/legal/javafx.graphics/*"/>
+                                    </patternset>
+                                    <mapper type="glob" from="${fx.reference.platform}/sdk/legal/javafx.graphics/*" to="legal/*"/>
+                                </unzip>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
