@@ -4,16 +4,57 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>us.hebi.graalvm</groupId>
-        <artifactId>jfx-static-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
-    </parent>
-
+    <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-feature</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
     <name>jfx-static-feature</name>
     <description>Feature and substitutions that link the static JavaFX libraries into a native image</description>
+    <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <organization>
+        <name>HEBI Robotics</name>
+        <url>http://www.hebirobotics.com</url>
+    </organization>
+
+    <scm>
+        <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+        <connection>scm:git:git://github.com/HebiRobotics/jfx-static-feature.git</connection>
+        <developerConnection>scm:git:git@github.com:HebiRobotics/jfx-static-feature.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <!-- The substitutions restate OpenJFX code, so it carries the OpenJFX license -->
+    <licenses>
+        <license>
+            <name>GNU General Public License, version 2, with the Classpath Exception</name>
+            <url>https://openjdk.org/legal/gplv2+ce.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ennerf</id>
+            <name>Florian Enner</name>
+            <email>florian at hebirobotics.com</email>
+            <url>https://github.com/ennerf</url>
+            <organization>HEBI Robotics</organization>
+            <organizationUrl>https://github.com/HebiRobotics</organizationUrl>
+        </developer>
+    </developers>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Matches the GraalVM the images are built with (Oracle GraalVM 25.0.1) -->
+        <graalvm.version>25.0.1</graalvm.version>
+        <!-- The JavaFX release the substitutions were written against -->
+        <javafx.version>26</javafx.version>
+        <!-- The jfx-static-libs release the feature was tested with -->
+        <javafx.static.version>26</javafx.static.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -48,5 +89,16 @@
             <scope>runtime</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Pinned because Maven 3.8's default compiler plugin still ignores maven.compiler.release -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

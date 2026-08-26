@@ -4,6 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Aggregator only, for one-command builds and IDEs. The modules are released on their own clocks and inherit nothing -->
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-parent</artifactId>
     <version>1.0-SNAPSHOT</version>
@@ -15,51 +16,7 @@
     <modules>
         <module>jfx-static-libs</module>
         <module>jfx-static-feature</module>
-        <module>hellofx-example</module>
-        <module>headless-example</module>
+        <module>jfx-static-examples</module>
     </modules>
-
-    <properties>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <!-- Matches the GraalVM the images are built with (Oracle GraalVM 25.0.1) -->
-        <graalvm.version>25.0.1</graalvm.version>
-        <!-- The JavaFX release the substitutions were written against and the example compiles against -->
-        <javafx.version>26</javafx.version>
-        <!-- The jfx-static-libs release the feature pins, overridable for a later JavaFX of the same major -->
-        <javafx.static.version>26</javafx.static.version>
-    </properties>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <version>3.1.0</version>
-                </plugin>
-                <!-- Pinned because Maven 3.8's default compiler plugin still ignores maven.compiler.release -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.4.2</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-resources-plugin</artifactId>
-                    <version>3.3.1</version>
-                    <configuration>
-                        <propertiesEncoding>${project.build.sourceEncoding}</propertiesEncoding>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
 
 </project>
