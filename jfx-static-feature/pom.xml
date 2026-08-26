@@ -38,8 +38,8 @@
         </dependency>
         <!--
           The metadata and every platform's archives in one jar. Pinned to the JavaFX build this
-          release was tested with, and a consumer overrides javafx.static.version for a later one
-          of the same major.
+          release was tested with, and a consumer moves to another one by declaring jfx-static-libs
+          directly. A property could not be overridden from outside this pom.
         -->
         <dependency>
             <groupId>us.hebi.graalvm</groupId>
@@ -48,17 +48,5 @@
             <scope>runtime</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <directory>src/main/resources-filtered</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
-    </build>
 
 </project>
