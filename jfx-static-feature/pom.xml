@@ -25,7 +25,7 @@
         <tag>HEAD</tag>
     </scm>
 
-    <!-- The substitutions restate OpenJFX code, so it carries the OpenJFX license -->
+    <!-- The substitutions restate OpenJFX code -->
     <licenses>
         <license>
             <name>GNU General Public License, version 2, with the Classpath Exception</name>
@@ -48,11 +48,8 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Matches the GraalVM the images are built with (Oracle GraalVM 25.0.1) -->
         <graalvm.version>25.0.1</graalvm.version>
-        <!-- The JavaFX release the substitutions were written against -->
         <javafx.version>26</javafx.version>
-        <!-- The jfx-static-libs release the feature was tested with -->
         <javafx.static.version>26</javafx.static.version>
     </properties>
 
@@ -63,25 +60,18 @@
             <version>${graalvm.version}</version>
             <scope>provided</scope>
         </dependency>
-        <!-- The feature and the substitutions use image builder internals, so svm.jar is on the compile class path -->
         <dependency>
             <groupId>org.graalvm.nativeimage</groupId>
             <artifactId>svm</artifactId>
             <version>${graalvm.version}</version>
             <scope>provided</scope>
         </dependency>
-        <!-- The LauncherImpl substitution restates its argument checks against the FX types -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
             <scope>provided</scope>
         </dependency>
-        <!--
-          The metadata and every platform's archives in one jar. Pinned to the JavaFX build this
-          release was tested with, and a consumer moves to another one by declaring jfx-static-libs
-          directly. A property could not be overridden from outside this pom.
-        -->
         <dependency>
             <groupId>us.hebi.graalvm</groupId>
             <artifactId>jfx-static-libs</artifactId>
@@ -92,7 +82,6 @@
 
     <build>
         <plugins>
-            <!-- Pinned because Maven 3.8's default compiler plugin still ignores maven.compiler.release -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

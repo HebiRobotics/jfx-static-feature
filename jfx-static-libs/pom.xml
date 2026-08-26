@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- No parent: versioned by the JavaFX build it was made from and released on its own clock -->
+    <!-- Versioned by the JavaFX build it was made from -->
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-libs</artifactId>
     <version>26</version>
@@ -26,7 +26,7 @@
         <tag>HEAD</tag>
     </scm>
 
-    <!-- OpenJFX build output, so it carries the OpenJFX license -->
+    <!-- OpenJFX build output -->
     <licenses>
         <license>
             <name>GNU General Public License, version 2, with the Classpath Exception</name>
@@ -48,11 +48,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- The combined static SDK archive of the ennerf/jfx CI build, every platform under its own directory -->
+        <!-- The combined static SDK archive of the ennerf/jfx CI build, every platform in its own directory -->
         <fx.zip>${project.basedir}/openjfx-${project.version}-internal-static.zip</fx.zip>
-        <!-- The ennerf/jfx commit the archive was built from, recorded in META-INF/NOTICE -->
+        <!-- Recorded in META-INF/NOTICE -->
         <fx.commit>ee5a159a3b</fx.commit>
-        <!-- Metadata and legal texts are identical in every SDK, so one is the source. Linux is the only one with gcc.md -->
+        <!-- Metadata and legal texts are the same in every SDK, Linux is the only one with gcc.md -->
         <fx.reference.platform>linux-x86_64</fx.reference.platform>
         <fx.reference.lib>${fx.reference.platform}/sdk/lib</fx.reference.lib>
     </properties>
@@ -86,7 +86,7 @@
                                     </condition>
                                 </fail>
 
-                                <!-- One jar for every platform, so a consumer names no classifier -->
+                                <!-- Every platform in one jar, so there is no classifier -->
                                 <macrodef name="unpack-platform">
                                     <attribute name="platform"/>
                                     <sequential>
@@ -106,7 +106,7 @@
                                 <unpack-platform platform="darwin-x86_64"/>
                                 <unpack-platform platform="darwin-aarch64"/>
 
-                                <!-- The metadata of every annotated module. native-image reads it off any class path jar -->
+                                <!-- Metadata of the annotated modules -->
                                 <unzip src="${fx.zip}" dest="${project.build.directory}/fx-jars">
                                     <patternset>
                                         <include name="${fx.reference.lib}/javafx.base.jar"/>
@@ -125,7 +125,7 @@
                                     </patternset>
                                 </unzip>
 
-                                <!-- GPLv2 with the Classpath Exception plus the third party notices of what is in the archives -->
+                                <!-- License, Classpath Exception and third party notices -->
                                 <unzip src="${fx.zip}" dest="${project.build.outputDirectory}/META-INF">
                                     <patternset>
                                         <include name="${fx.reference.platform}/sdk/legal/javafx.graphics/*"/>

@@ -27,10 +27,8 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 /**
- * Renders a fixed scene on the headless glass platform, checks a handful of pixels and writes the
- * snapshot as a PNG. This is what CI runs on every platform: the headless target loads no glass
- * native at all, but the render still goes through prism_sw, javafx_font and, for the decoded
- * picture, javafx_iio, which is enough to prove the static link and the loader substitutions.
+ * Renders a fixed scene on the headless glass platform, checks a few pixels and writes the snapshot
+ * as a PNG. Headless loads no glass native, but prism_sw, javafx_font and javafx_iio still get exercised.
  *
  * @author Florian Enner
  * @since 26 Aug 2026
@@ -43,13 +41,13 @@ public class HeadlessRenderCheck {
     private static final Color SHAPE = Color.web("#1e6fd9");
     private static final Color PICTURE = Color.web("#3fb950");
 
-    /** Where each of the three nodes ends up, which is also where the check samples. */
+    // Node positions, which is also where the check samples
     private static final int SHAPE_X = 20, SHAPE_Y = 20, SHAPE_WIDTH = 120, SHAPE_HEIGHT = 80;
     private static final int PICTURE_X = 240, PICTURE_Y = 20, PICTURE_SIZE = 80;
     private static final int TEXT_X = 20, TEXT_BASELINE = 200, TEXT_SIZE = 36;
 
     public static void main(String[] args) throws Exception {
-        // Both have to be set before the toolkit starts, so that no -D is needed on the command line
+        // Before the toolkit starts
         System.setProperty("glass.platform", "Headless");
         System.setProperty("prism.order", "sw");
 
@@ -103,10 +101,7 @@ public class HeadlessRenderCheck {
         return scene.snapshot(null);
     }
 
-    /**
-     * A solid square encoded as a PNG and decoded again, so that the check covers javafx_iio rather
-     * than only the pixels this process wrote itself.
-     */
+    // Round trip through PNG so the check covers javafx_iio
     private static Image decodePicture() {
         WritableImage square = new WritableImage(PICTURE_SIZE, PICTURE_SIZE);
         for (int y = 0; y < PICTURE_SIZE; y++) {
@@ -135,7 +130,7 @@ public class HeadlessRenderCheck {
 
     private static void checkPixel(List<String> problems, WritableImage image, int x, int y, Color expected, String what) {
         Color found = image.getPixelReader().getColor(x, y);
-        // The software pipeline fills solid areas exactly, so this leaves room for color conversion only
+        // sw fills solid areas exactly, this only allows for color conversion
         double tolerance = 2 / 255d;
         if (Math.abs(found.getRed() - expected.getRed()) > tolerance
                 || Math.abs(found.getGreen() - expected.getGreen()) > tolerance
@@ -156,16 +151,13 @@ public class HeadlessRenderCheck {
         return false;
     }
 
-    /**
-     * A PNG encoder rather than javax.imageio, whose BufferedImage clinit loads libawt and fails in
-     * an image without AWT metadata.
-     */
+    // javax.imageio would pull in AWT
     private static byte[] encodePng(WritableImage image) throws IOException {
         int width = (int) image.getWidth();
         int height = (int) image.getHeight();
         PixelReader pixels = image.getPixelReader();
 
-        // One filter byte (0 = None) plus RGBA per row, which is what deflate below compresses
+        // filter byte 0 plus RGBA per row
         byte[] raw = new byte[height * (1 + width * 4)];
         int i = 0;
         for (int y = 0; y < height; y++) {

@@ -19,7 +19,7 @@
         <skipNativeBuild>false</skipNativeBuild>
     </properties>
 
-    <!-- Label plus button on the d3d, es2 or mtl pipeline, the manual pre-release check on a real display -->
+    <!-- Label plus button on the hardware pipelines, the manual check on a real display -->
     <build>
         <plugins>
             <plugin>

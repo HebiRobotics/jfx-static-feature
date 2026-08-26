@@ -19,7 +19,7 @@
         <skipNativeBuild>false</skipNativeBuild>
     </properties>
 
-    <!-- Renders without a display and asserts on its own pixels, so it is the one every CI runner can execute -->
+    <!-- Renders without a display, so it can be executed by every CI runner -->
     <build>
         <plugins>
             <plugin>

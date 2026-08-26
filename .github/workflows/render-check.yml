@@ -1,7 +1,5 @@
-# Builds a native image on every platform the feature ships archives for and proves that it
-# renders, so that a feature or SDK change that breaks one of them is caught without anyone's Mac
-# or Pi. The windowed pipelines (d3d on Windows, es2 and mtl on macOS) need a real session and stay
-# a manual pre-release check; CI covers the link, the loader substitutions and the software render.
+# Builds and runs the headless example on every platform. The windowed pipelines need a real
+# session and stay a manual check.
 name: render check
 
 on:
@@ -13,8 +11,7 @@ on:
         required: false
 
 env:
-  # The combined static SDK archive of the ennerf/jfx build, which is the input to jfx-static-libs.
-  # It is not on Central, so a run needs either the FX_STATIC_SDK_URL variable or the dispatch input.
+  # The ennerf/jfx archive is not on Central, so a run needs the FX_STATIC_SDK_URL variable or the dispatch input
   SDK_URL: ${{ github.event.inputs.sdk-url || vars.FX_STATIC_SDK_URL }}
   FX_VERSION: "26"
 
@@ -31,8 +28,7 @@ jobs:
           - os: windows-latest
             platform: windows-x86_64
             graalvm: "25"
-          # One row on the previous minor, so that a GraalVM internal that moves shows up here
-          # rather than in a consumer's build
+          # One row on the previous minor, so a moved GraalVM internal shows up here first
           - os: windows-latest
             platform: windows-x86_64
             graalvm: "25.0"
@@ -57,8 +53,7 @@ jobs:
           distribution: graalvm
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # The image links against GTK, X11 and GL even when it only renders headless, since the
-      # feature adds the whole platform library set
+      # The feature links the whole GTK stack even for a headless render
       - name: install the link dependencies
         if: runner.os == 'Linux'
         run: |
@@ -91,9 +86,7 @@ jobs:
           path: jfx-static-examples/example-headless/target/render-check.png
           if-no-files-found: warn
 
-  # The headless platform loads no glass native at all, so one job still has to run the windowed
-  # app. Linux is the only runner that can: Xvfb gives it a display, and it is the backend nobody
-  # exercises otherwise.
+  # Headless loads no glass native, so one job runs the windowed app. Linux is the only runner with a display (Xvfb)
   gtk-window:
     name: hellofx on glassgtk3
     runs-on: ubuntu-latest
@@ -125,8 +118,7 @@ jobs:
       - name: build hellofx
         run: mvn -B -Pnative package -pl jfx-static-examples/example-hellofx -am
 
-      # The app runs until it is closed, so the timeout is the success path and the pipeline line
-      # is the assertion
+      # The app runs until closed, the timeout is the success path
       - name: show the window
         run: |
           cd jfx-static-examples/example-hellofx/target

@@ -20,15 +20,15 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
 /**
- * Links the statically built JavaFX native libraries into the image and tells Substrate that their
- * JNI entry points are compiled in rather than loaded from a DLL.
+ * Links the static JavaFX libraries into the image and tells Substrate that their JNI entry
+ * points are builtin rather than loaded from a DLL.
  *
  * @author Florian Enner
  * @since 25 Aug 2026
  */
 public class JfxStaticFeature implements Feature {
 
-    /** JNI prefixes of the packages whose natives live in the static libraries. */
+    // JNI prefixes that resolve into the static libraries
     private static final List<String> BUILTIN_PREFIXES = List.of(
             "com_sun_glass",
             "com_sun_javafx",
@@ -36,7 +36,7 @@ public class JfxStaticFeature implements Feature {
             "com_sun_prism",
             "com_sun_scenario_effect");
 
-    /** Static JavaFX libraries in the static SDK's lib directory, without prefix and suffix. */
+    // JavaFX libraries in the jfx-static-libs, without prefix and suffix
     private static final List<String> WINDOWS_LIBRARIES = List.of(
             "glass",
             "prism_common",
@@ -46,7 +46,7 @@ public class JfxStaticFeature implements Feature {
             "javafx_font",
             "javafx_iio");
 
-    /** glass is only the gtk version chooser, the backend itself is glassgtk3. */
+    // glass is only the gtk version chooser, the backend is glassgtk3
     private static final List<String> LINUX_LIBRARIES = List.of(
             "glass",
             "glassgtk3",
@@ -59,7 +59,7 @@ public class JfxStaticFeature implements Feature {
             "javafx_font_pango",
             "javafx_iio");
 
-    /** es2 is the default, prism_mtl is what -Dprism.order=mtl selects */
+    // es2 is the default, -Dprism.order=mtl selects prism_mtl
     private static final List<String> MACOS_LIBRARIES = List.of(
             "glass",
             "prism_common",
@@ -80,36 +80,32 @@ public class JfxStaticFeature implements Feature {
             "urlmon", "winmm", "d3d9", "uiautomationcore", "dwrite", "d2d1", "windowscodecs",
             "usp10", "advapi32", "shlwapi", "dwmapi", "uuid", "msimg32", "propsys");
 
-    /** @see #WINDOWS_SYSTEM_LIBRARIES */
     private static final List<String> LINUX_SYSTEM_LIBRARIES = List.of(
             "gtk-3", "gdk-3", "gdk_pixbuf-2.0", "glib-2.0", "gobject-2.0", "gio-2.0", "cairo",
             "pangoft2-1.0", "pango-1.0", "freetype",
             "X11", "Xtst", "Xxf86vm", "GL",
             "stdc++", "m");
 
-    /**
-     * The Objective-C runtime and the C++ standard library. The frameworks glass and prism link
-     * against are not libraries, so they go through {@link #MACOS_FRAMEWORKS} instead.
-     *
-     * @see #WINDOWS_SYSTEM_LIBRARIES
-     */
+    // The macOS frameworks are not libraries and go through linkerOptions()
     private static final List<String> MACOS_SYSTEM_LIBRARIES = List.of("objc", "c++");
 
-    /** The frameworks buildSrc/mac.gradle links the dynamic build against, plus what the font code and the run loop need. */
+    // What buildSrc/mac.gradle links against, plus CoreText/CoreGraphics for fonts and CoreFoundation for the run loop
     private static final List<String> MACOS_FRAMEWORKS = List.of(
             "AppKit", "ApplicationServices", "Carbon", "OpenGL", "QuartzCore", "Security",
             "Network", "Metal", "CoreText", "CoreGraphics", "CoreFoundation");
 
-    /** Resource root jfx-static-libs keeps every platform's archives under. */
+    // Where jfx-static-libs keeps the archives of every platform
     private static final String NATIVES_RESOURCES = "/us/hebi/graalvm/jfx/natives/";
+
+    // Where beforeAnalysis unpacked the archives, needed again for the macOS -force_load
+    private Path staticLibraryDirectory;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         if (access.findClassByName("javafx.application.Application") == null) {
             return false;
         }
-        // Without the archives the image would fall back to loading FX from a DLL, which every
-        // substitution in this jar breaks, so stay out of the way instead.
+        // Without archives the substitutions would break a dynamic FX image, so stay off
         String platform = platformName();
         if (platform == null) {
             System.out.println("JfxStaticFeature: no static JavaFX libraries known for this platform, staying off");
@@ -135,7 +131,7 @@ public class JfxStaticFeature implements Feature {
         }
     }
 
-    /** GraalVM 25.3 renamed addBuiltinPkgNativePrefix to addBuiltinNativePrefix, and both are supported. */
+    // GraalVM 25.3 renamed addBuiltinPkgNativePrefix to addBuiltinNativePrefix
     private static Method builtinPrefixMethod() {
         for (String name : List.of("addBuiltinNativePrefix", "addBuiltinPkgNativePrefix")) {
             try {
@@ -162,11 +158,8 @@ public class JfxStaticFeature implements Feature {
             nativeLibraries.addDynamicNonJniLibrary(library);
         }
 
-        // Application.launch instantiates the concrete subclass through its no-argument
-        // constructor, and the no-argument launch(String[]) overload looks the caller up by name
-        // with Class.forName first. Neither is registered by the built-in JavaFXFeature. The
-        // handler only fires for subclasses the analysis already reached, so an unused launcher in
-        // the same jar costs nothing.
+        // Application.launch() needs the subclass by name and its no-arg constructor, which the built-in
+        // JavaFXFeature does not register. Only reachable types show up here, so we don't add extra classes.
         access.registerSubtypeReachabilityHandler((duringAnalysis, applicationClass) -> {
             RuntimeReflection.register(applicationClass);
             RuntimeReflection.register(applicationClass.getDeclaredConstructors());
@@ -185,15 +178,13 @@ public class JfxStaticFeature implements Feature {
         });
     }
 
-    /** Platform linker syntax that has no NativeLibraries API behind it. */
+    // Linker syntax that has no NativeLibraries API behind it
     private List<String> linkerOptions() {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            // glassgtk3 still references g_thread_init behind a glib version check no current glib takes.
-            // The value has to be absolute: ld accepts "=abort" only where abort is already defined,
-            // which holds on x86_64 by accident of link order and never on aarch64.
+            // glassgtk3 references g_thread_init, which glib dropped. Absolute value because =abort only works on x86_64 by link order
             return List.of("-Wl,--defsym,g_thread_init=0");
         } else if (Platform.includedIn(Platform.MACOS.class)) {
-            // The GlassWindow categories define no symbol the linker goes looking for and are dropped otherwise
+            // The GlassWindow categories define no symbol the linker looks for and get dropped otherwise
             List<String> options = new ArrayList<>();
             options.add("-Wl,-force_load," + staticLibraryDirectory.resolve(staticLibraryFileName("glass")));
             for (String framework : MACOS_FRAMEWORKS) {
@@ -204,10 +195,7 @@ public class JfxStaticFeature implements Feature {
         return List.of();
     }
 
-    /**
-     * Unpacks the platform's archives out of the jfx-static-libs jar and returns the
-     * directory to add to the library path, so that a consumer needs no -H:CLibraryPath.
-     */
+    // Unpacks the platform's archives so a consumer needs no -H:CLibraryPath
     private static Path extractStaticLibraries(Path tempDirectory) {
         Path directory = tempDirectory.resolve("javafx-static");
         try {
@@ -231,13 +219,12 @@ public class JfxStaticFeature implements Feature {
         return NATIVES_RESOURCES + platformName() + "/" + staticLibraryFileName(library);
     }
 
-    /** Matches NativeLibraries::getStaticLibraryName, which is what the linker looks for. */
+    // Matches NativeLibraries::getStaticLibraryName
     private static String staticLibraryFileName(String library) {
         return Platform.includedIn(Platform.WINDOWS.class) ? library + ".lib" : "lib" + library + ".a";
     }
 
-    /** Directory name of this platform's archives, null where the feature has none. Spelled the way
-     * Gluon Substrate spells its targets, so one vocabulary covers both. */
+    // Spelled like Gluon Substrate's targets, null where there are no archives
     private static String platformName() {
         if (Platform.includedIn(Platform.WINDOWS_AMD64.class)) {
             return "windows-x86_64";
@@ -274,8 +261,5 @@ public class JfxStaticFeature implements Feature {
         }
         throw new UnsupportedOperationException("No system libraries known for this platform");
     }
-
-    /** Where beforeAnalysis unpacked the archives, needed again for the macOS -force_load. */
-    private Path staticLibraryDirectory;
 
 }

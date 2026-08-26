@@ -4,11 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!--
-      Everything an example shares: Central's JavaFX, the feature, and a native-maven-plugin setup
-      with nothing in it beyond what any native-image project writes. An example adds its image
-      name and main class.
-    -->
+    <!-- Shared by every example, which adds its image name and main class -->
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-examples</artifactId>
     <version>1.0-SNAPSHOT</version>
@@ -27,8 +23,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>26</javafx.version>
         <jfx.static.feature.version>1.0-SNAPSHOT</jfx.static.feature.version>
-        <!-- The profile below is inherited, and this pom has no main class to build an image of -->
-        <skipNativeBuild>true</skipNativeBuild>
+        <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
     </properties>
 
     <dependencies>
@@ -55,7 +50,6 @@
                 <plugin>
                     <groupId>org.graalvm.buildtools</groupId>
                     <artifactId>native-maven-plugin</artifactId>
-                    <!-- 1.x is the line that ships the GraalVM 25 metadata format -->
                     <version>1.0.0</version>
                     <executions>
                         <execution>
@@ -68,7 +62,7 @@
                     </executions>
                     <configuration>
                         <fallback>false</fallback>
-                        <!-- The feature jar and the FX metadata it depends on are the whole configuration -->
+                        <!-- Disable fallback metadata repo for a clean test -->
                         <metadataRepository>
                             <enabled>false</enabled>
                         </metadataRepository>
