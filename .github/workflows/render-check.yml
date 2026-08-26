@@ -19,7 +19,6 @@ jobs:
           - os: windows-latest
             platform: windows-x86_64
             graalvm: "25"
-          # One row on the previous minor, so a moved GraalVM internal shows up here first
           - os: windows-latest
             platform: windows-x86_64
             graalvm: "25"
@@ -29,9 +28,9 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: linux-aarch64
             graalvm: "25"
-          - os: macos-13
+          - os: macos-15-intel
             platform: darwin-x86_64
-            graalvm: "25"
+            graalvm: "25.0.1" # last intel version, and checks for API compatibility
           - os: macos-latest
             platform: darwin-aarch64
             graalvm: "25"
