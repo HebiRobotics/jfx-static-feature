@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>us.hebi.graalvm</groupId>
-        <artifactId>native-jfx-parent</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <artifactId>jfx-static-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>native-jfx-feature</artifactId>
+    <artifactId>jfx-static-feature</artifactId>
 
-    <name>native-jfx-feature</name>
+    <name>jfx-static-feature</name>
     <description>Feature and substitutions that link the static JavaFX libraries into a native image</description>
 
     <dependencies>
@@ -36,6 +36,29 @@
             <version>${javafx.version}</version>
             <scope>provided</scope>
         </dependency>
+        <!--
+          The metadata and every platform's archives in one jar. Pinned to the JavaFX build this
+          release was tested with, and a consumer overrides javafx.static.version for a later one
+          of the same major.
+        -->
+        <dependency>
+            <groupId>us.hebi.graalvm</groupId>
+            <artifactId>jfx-static-libs</artifactId>
+            <version>${javafx.static.version}</version>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
 
 </project>
