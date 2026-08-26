@@ -18,8 +18,8 @@
     <description>Example applications built as static JavaFX native images</description>
 
     <modules>
-        <module>hellofx</module>
-        <module>headless</module>
+        <module>example-hellofx</module>
+        <module>example-headless</module>
     </modules>
 
     <properties>

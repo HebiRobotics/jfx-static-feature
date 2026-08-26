@@ -76,19 +76,19 @@ jobs:
           curl -fsSL -o "jfx-static-libs/$zip" "$SDK_URL/$zip"
 
       - name: build the render check
-        run: mvn -B -Pnative package -pl jfx-static-examples/headless -am
+        run: mvn -B -Pnative package -pl jfx-static-examples/example-headless -am
 
       - name: run the render check
         shell: bash
         run: |
-          cd jfx-static-examples/headless/target
+          cd jfx-static-examples/example-headless/target
           ./render-check render-check.png
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: render-check-${{ matrix.platform }}-graalvm${{ matrix.graalvm }}
-          path: jfx-static-examples/headless/target/render-check.png
+          path: jfx-static-examples/example-headless/target/render-check.png
           if-no-files-found: warn
 
   # The headless platform loads no glass native at all, so one job still has to run the windowed
@@ -123,12 +123,12 @@ jobs:
           curl -fsSL -o "jfx-static-libs/$zip" "$SDK_URL/$zip"
 
       - name: build hellofx
-        run: mvn -B -Pnative package -pl jfx-static-examples/hellofx -am
+        run: mvn -B -Pnative package -pl jfx-static-examples/example-hellofx -am
 
       # The app runs until it is closed, so the timeout is the success path and the pipeline line
       # is the assertion
       - name: show the window
         run: |
-          cd jfx-static-examples/hellofx/target
+          cd jfx-static-examples/example-hellofx/target
           timeout 30 xvfb-run -a ./hellofx -Dprism.verbose=true | tee hellofx.log || true
           grep "Initialized prism pipeline" hellofx.log

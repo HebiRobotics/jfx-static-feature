@@ -36,11 +36,12 @@ change in years, so nothing else moves:
 </dependency>
 ```
 
-`jfx-static-examples/hellofx` is the whole recipe, its parent pom holds the dependencies and the
-plugin setup and `mvn -Pnative package` there produces a running executable. `headless` is the
-same thing without a display: it renders a fixed scene on the headless glass platform, checks its
-own pixels and writes the snapshot as a PNG, which is what `.github/workflows/render-check.yml`
-runs on all five platforms. The windowed pipelines need a real session and stay a manual check.
+`jfx-static-examples/example-hellofx` is the whole recipe, its parent pom holds the dependencies
+and the plugin setup and `mvn -Pnative package` there produces a running executable.
+`example-headless` is the same thing without a display: it renders a fixed scene on the headless
+glass platform, checks its own pixels and writes the snapshot as a PNG, which is what
+`.github/workflows/render-check.yml` runs on all five platforms. The windowed pipelines need a real
+session and stay a manual check.
 
 Linked and run on all five platforms: `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
 `darwin-x86_64` and `darwin-aarch64`.
@@ -219,7 +220,7 @@ The same command everywhere, from a shell that has the platform's C toolchain (`
 Windows) and a GraalVM 25 in `JAVA_HOME`:
 
 ```
-mvn -Pnative package -pl jfx-static-examples/hellofx -am
+mvn -Pnative package -pl jfx-static-examples/example-hellofx -am
 ```
 
 For your own app, the dependency from the top of this file plus `native-maven-plugin` with
@@ -263,8 +264,8 @@ ENV JAVA_HOME=/opt/graalvm PATH=/opt/graalvm/bin:$PATH
 
 ```powershell
 docker run -d --name jfxlink -m 12g --cpus 16 -v "<repo>:/repo" jfx-linux-link sleep infinity
-docker exec jfxlink bash -c 'cd /repo && mvn -Pnative package -pl jfx-static-examples/hellofx -am'
-docker exec jfxlink bash -c 'cd /repo/jfx-static-examples/hellofx/target && xvfb-run -a ./hellofx'
+docker exec jfxlink bash -c 'cd /repo && mvn -Pnative package -pl jfx-static-examples/example-hellofx -am'
+docker exec jfxlink bash -c 'cd /repo/jfx-static-examples/example-hellofx/target && xvfb-run -a ./hellofx'
 ```
 
 ### What is static and what is not
