@@ -22,19 +22,16 @@ jobs:
           - os: windows-2022-8core
             platform: windows-x86_64
             graalvm: "25"
-          - os: windows-2022-8core
-            platform: windows-x86_64
-            graalvm: "25"
           - os: ubuntu-22.04-8core
             platform: linux-x86_64
             graalvm: "25"
           - os: ubuntu-22.04-arm-large
             platform: linux-aarch64
             graalvm: "25"
-          - os: macos-15-large
+          - os: macos-15-intel
             platform: darwin-x86_64
             graalvm: "25.0.1" # last intel version, and checks for API compatibility
-          - os: macos-15-xlarge
+          - os: macos-latest
             platform: darwin-aarch64
             graalvm: "25"
     steps:
