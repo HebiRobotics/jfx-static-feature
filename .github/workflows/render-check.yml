@@ -66,42 +66,68 @@ jobs:
           path: jfx-static-examples/example-render-check/target/render-check-*.png
           if-no-files-found: warn
 
-  # One artifact with every snapshot, plus an index.html that shows them side by side. The job summary
-  # cannot embed images, so the page is what to open after a download
   report:
     name: snapshot report
     runs-on: ubuntu-latest
     needs: render-check
     if: always()
+    permissions:
+      actions: write
     steps:
+      # One artifact instead of one per job, the snapshots are named after host and configuration
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          name: render-checks
+          pattern: render-check-*
+          delete-merged: true
+
       - uses: actions/download-artifact@v4
         with:
-          pattern: render-check-*
+          name: render-checks
           path: snapshots
 
       - name: write the index and the summary
-        shell: bash
+        shell: python
         run: |
-          cd snapshots
-          {
-            echo '<!doctype html><meta charset="utf-8"><title>render check</title>'
-            echo '<style>body{font-family:sans-serif} figure{display:inline-block;margin:1em} img{border:1px solid #ccc}</style>'
-            for png in */render-check-*.png; do
-              echo "<figure><img src=\"data:image/png;base64,$(base64 -w0 "$png")\"><figcaption>$png</figcaption></figure>"
-            done
-          } > index.html
-          {
-            echo '| job | snapshot | bytes |'
-            echo '|---|---|---|'
-            for png in */render-check-*.png; do
-              echo "| ${png%%/*} | ${png#*/} | $(stat -c %s "$png") |"
-            done
-          } >> "$GITHUB_STEP_SUMMARY"
+          import os, re
+          stages = ['2d', '3d', 'titlebar', 'alert', 'popup', 'robot', 'richtext']
+          rows = {}
+          for name in sorted(os.listdir('snapshots')):
+              m = re.match(r'render-check-(.+)-(\w+)\.png$', name)
+              if m:
+                  rows.setdefault(m.group(1), {})[m.group(2)] = name
+          # One table, hosts and configurations down, scenarios across, so the platforms compare side by side
+          html = ['<!doctype html><meta charset="utf-8"><title>render check</title>',
+                  '<style>body{font-family:sans-serif;background:#eee;margin:1em} table{border-collapse:collapse}'
+                  ' th,td{border:1px solid #bbb;padding:4px;text-align:center;background:#fff} th{background:#ddd}'
+                  ' td.row{text-align:left;white-space:nowrap;font-size:13px} img{max-width:240px;max-height:180px}'
+                  ' .skip{color:#999}</style>',
+                  '<table><tr><th>configuration</th>' + ''.join(f'<th>{s}</th>' for s in stages) + '</tr>']
+          summary = ['| configuration | ' + ' | '.join(stages) + ' |', '|---|' + '---|' * len(stages)]
+          # GPU pipelines first and the real window before Headless, the hosts last, so the same
+          # scenario on every platform sits in adjacent rows
+          def order(config):
+              host, pipeline, platform = config.rsplit('-', 2)
+              return (pipeline == 'sw', platform == 'Headless', host)
+          for config in sorted(rows, key=order):
+              files = rows[config]
+              html.append(f'<tr><td class="row">{config}</td>' + ''.join(
+                  f'<td><a href="{files[s]}"><img src="{files[s]}"></a></td>' if s in files else '<td class="skip">skipped</td>'
+                  for s in stages) + '</tr>')
+              summary.append(f'| {config} | ' + ' | '.join(
+                  str(os.path.getsize(os.path.join('snapshots', files[s]))) + ' B' if s in files else 'skipped'
+                  for s in stages) + ' |')
+          html.append('</table>')
+          with open('snapshots/index.html', 'w') as f:
+              f.write('\n'.join(html))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('\n'.join(summary) + '\n')
 
       - uses: actions/upload-artifact@v4
         with:
           name: render-checks
           path: snapshots
+          overwrite: true
 
   # Headless loads no glass native, so one job runs the windowed app. Linux is the only runner with a display (Xvfb)
   gtk-window:
