@@ -4,6 +4,9 @@ name: render check
 
 on:
   push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -16,22 +19,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2022-8core
             platform: windows-x86_64
             graalvm: "25"
-          - os: windows-latest
+          - os: windows-2022-8core
             platform: windows-x86_64
             graalvm: "25"
-          - os: ubuntu-latest
+          - os: ubuntu-22.04-8core
             platform: linux-x86_64
             graalvm: "25"
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-22.04-arm-large
             platform: linux-aarch64
             graalvm: "25"
-          - os: macos-15-intel
+          - os: macos-15-large
             platform: darwin-x86_64
             graalvm: "25.0.1" # last intel version, and checks for API compatibility
-          - os: macos-latest
+          - os: macos-15-xlarge
             platform: darwin-aarch64
             graalvm: "25"
     steps:
@@ -132,7 +135,7 @@ jobs:
   # Headless loads no glass native, so one job runs the windowed app. Linux is the only runner with a display (Xvfb)
   gtk-window:
     name: hellofx on glassgtk3
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-8core
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
