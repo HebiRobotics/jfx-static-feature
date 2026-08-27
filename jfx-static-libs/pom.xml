@@ -26,7 +26,7 @@
         <tag>HEAD</tag>
     </scm>
 
-    <!-- OpenJFX build output -->
+    <!-- OpenJFX build output with the same license -->
     <licenses>
         <license>
             <name>GNU General Public License, version 2, with the Classpath Exception</name>
@@ -39,7 +39,7 @@
         <developer>
             <id>ennerf</id>
             <name>Florian Enner</name>
-            <email>florian at hebirobotics.com</email>
+            <email>ennerf@users.noreply.github.com</email>
             <url>https://github.com/ennerf</url>
             <organization>HEBI Robotics</organization>
             <organizationUrl>https://github.com/HebiRobotics</organizationUrl>
@@ -50,11 +50,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- The combined static SDK of the ennerf/jfx build, published as the release <fx.version>-<fx.commit> -->
         <fx.version>26.0.2-internal</fx.version>
-        <fx.commit>2a2cb094b5</fx.commit>
+        <fx.commit>d45a758198</fx.commit>
         <fx.zip>${project.basedir}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.zip>
         <fx.url>https://github.com/ennerf/jfx/releases/download/${fx.version}-${fx.commit}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.url>
-        <!-- Metadata and legal texts are the same in every SDK, Linux is the only one with gcc.md -->
-        <fx.reference.platform>linux-x86_64</fx.reference.platform>
+        <fx.reference.platform>linux-x86_64</fx.reference.platform> <!-- source for legal texts -->
         <fx.reference.lib>${fx.reference.platform}/sdk/lib</fx.reference.lib>
         <gpg.keyname/>
     </properties>

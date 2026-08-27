@@ -22,10 +22,10 @@ jobs:
           - os: windows-2022-8core
             platform: windows-x86_64
             graalvm: "25"
-          - os: ubuntu-22.04-8core
+          - os: ubuntu-22.04 # the glibc and GLib the archives were built with
             platform: linux-x86_64
             graalvm: "25"
-          - os: ubuntu-22.04-arm-large
+          - os: ubuntu-24.04-arm # older archives on a newer glibc and GLib
             platform: linux-aarch64
             graalvm: "25"
           - os: macos-15-intel
@@ -132,7 +132,7 @@ jobs:
   # Headless loads no glass native, so one job runs the windowed app. Linux is the only runner with a display (Xvfb)
   gtk-window:
     name: hellofx on glassgtk3
-    runs-on: ubuntu-22.04-8core
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
