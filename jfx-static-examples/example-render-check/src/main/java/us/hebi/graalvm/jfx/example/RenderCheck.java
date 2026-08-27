@@ -89,7 +89,9 @@ public class RenderCheck {
         setDefault("glass.platform", "Headless"); // Win, Gtk, Mac, Headless
         setDefault("prism.order", "sw"); // d3d, mtl, es2, sw (add -Dprism.forceGPU=true to run es2 on RPi)
 
-        Path output = Path.of(args.length > 0 ? args[0] : "render-check.png");
+        // Named after the configuration so the artifacts of several runs can sit next to each other
+        String label = System.getProperty("prism.order").replace(' ', '_') + "-" + System.getProperty("glass.platform");
+        Path output = Path.of(args.length > 0 ? args[0] : "render-check-" + label + ".png");
         long start = System.nanoTime();
 
         WritableImage[] snapshot = new WritableImage[1];
@@ -113,7 +115,7 @@ public class RenderCheck {
         }
         Files.write(output, encodePng(snapshot[0]));
         System.out.printf("wrote %s, %d bytes, %.0f ms, %s%n", output.toAbsolutePath(), Files.size(output),
-                (System.nanoTime() - start) / 1e6, System.getProperty("prism.order").replace(' ', '_'));
+                (System.nanoTime() - start) / 1e6, label);
 
         List<String> problems = check(snapshot[0]);
         problems.forEach(problem -> System.out.println("FAILED: " + problem));

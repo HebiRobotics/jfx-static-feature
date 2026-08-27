@@ -57,14 +57,51 @@ jobs:
         shell: bash
         run: |
           cd jfx-static-examples/example-render-check/target
-          ./render-check render-check.png
+          ./render-check
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: render-check-${{ matrix.platform }}-graalvm${{ matrix.graalvm }}
-          path: jfx-static-examples/example-render-check/target/render-check.png
+          path: jfx-static-examples/example-render-check/target/render-check-*.png
           if-no-files-found: warn
+
+  # One artifact with every snapshot, plus an index.html that shows them side by side. The job summary
+  # cannot embed images, so the page is what to open after a download
+  report:
+    name: snapshot report
+    runs-on: ubuntu-latest
+    needs: render-check
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: render-check-*
+          path: snapshots
+
+      - name: write the index and the summary
+        shell: bash
+        run: |
+          cd snapshots
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>render check</title>'
+            echo '<style>body{font-family:sans-serif} figure{display:inline-block;margin:1em} img{border:1px solid #ccc}</style>'
+            for png in */render-check-*.png; do
+              echo "<figure><img src=\"data:image/png;base64,$(base64 -w0 "$png")\"><figcaption>$png</figcaption></figure>"
+            done
+          } > index.html
+          {
+            echo '| job | snapshot | bytes |'
+            echo '|---|---|---|'
+            for png in */render-check-*.png; do
+              echo "| ${png%%/*} | ${png#*/} | $(stat -c %s "$png") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: render-checks
+          path: snapshots
 
   # Headless loads no glass native, so one job runs the windowed app. Linux is the only runner with a display (Xvfb)
   gtk-window:
