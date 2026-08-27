@@ -1,0 +1,4 @@
+/* Loaded from the class path, the data URL stylesheet in HeadlessRenderCheck is the other path */
+.check-gradient {
+    -fx-fill: linear-gradient(to right, #c0392b 0%, #c0392b 50%, #8e44ad 50%, #8e44ad 100%);
+}

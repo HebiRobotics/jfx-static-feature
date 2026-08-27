@@ -37,10 +37,12 @@ error. The substitutions have not had to follow a JavaFX change in years.
 
 `jfx-static-examples/example-hellofx` is the whole recipe, its parent pom holds the dependencies
 and the plugin setup and `mvn -Pnative package` there produces a running executable.
-`example-headless` is the same thing without a display: it renders a fixed scene on the headless
+`example-render-check` is the same thing without a display: it renders a fixed scene on the headless
 glass platform, checks its own pixels and writes the snapshot as a PNG, which is what
-`.github/workflows/render-check.yml` runs on all five platforms. The windowed pipelines need a real
-session and stay a manual check.
+`.github/workflows/render-check.yml` runs on all five platforms. It renders with the sw pipeline
+unless the binary is started with `-Dprism.order=d3d` (`es2`, `mtl`), which checks the GPU path
+of the same image, and `-Dglass.platform=Win` (`Gtk`, `Mac`) renders the same scene in a real
+window, which needs a session and stays a manual check.
 
 Linked and run on all five platforms: `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
 `darwin-x86_64` and `darwin-aarch64`.

@@ -10,14 +10,23 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>example-headless</artifactId>
+    <artifactId>example-render-check</artifactId>
 
-    <name>example-headless</name>
+    <name>example-render-check</name>
     <description>Offscreen render check that CI runs on every platform</description>
 
     <properties>
         <skipNativeBuild>false</skipNativeBuild>
     </properties>
+
+    <dependencies>
+        <!-- The scene root goes through FXMLLoader, so the fxml module gets linked and checked as well -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+    </dependencies>
 
     <!-- Renders without a display, so it can be executed by every CI runner -->
     <build>
@@ -27,7 +36,7 @@
                 <artifactId>native-maven-plugin</artifactId>
                 <configuration>
                     <imageName>render-check</imageName>
-                    <mainClass>us.hebi.graalvm.jfx.example.HeadlessRenderCheck</mainClass>
+                    <mainClass>us.hebi.graalvm.jfx.example.RenderCheck</mainClass>
                 </configuration>
             </plugin>
         </plugins>

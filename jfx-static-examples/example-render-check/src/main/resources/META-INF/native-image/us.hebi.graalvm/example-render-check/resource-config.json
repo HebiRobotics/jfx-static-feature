@@ -1,0 +1,7 @@
+{
+  "resources": {
+    "includes": [
+      { "pattern": "us/hebi/graalvm/jfx/example/check.css" }
+    ]
+  }
+}

@@ -51,19 +51,19 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev libpango1.0-dev xvfb
 
       - name: build the render check
-        run: mvn -B -Pnative package -pl jfx-static-examples/example-headless -am
+        run: mvn -B -Pnative package -pl jfx-static-examples/example-render-check -am
 
       - name: run the render check
         shell: bash
         run: |
-          cd jfx-static-examples/example-headless/target
+          cd jfx-static-examples/example-render-check/target
           ./render-check render-check.png
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: render-check-${{ matrix.platform }}-graalvm${{ matrix.graalvm }}
-          path: jfx-static-examples/example-headless/target/render-check.png
+          path: jfx-static-examples/example-render-check/target/render-check.png
           if-no-files-found: warn
 
   # Headless loads no glass native, so one job runs the windowed app. Linux is the only runner with a display (Xvfb)

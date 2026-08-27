@@ -15,7 +15,7 @@
 
     <modules>
         <module>example-hellofx</module>
-        <module>example-headless</module>
+        <module>example-render-check</module>
     </modules>
 
     <properties>
