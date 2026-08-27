@@ -4,7 +4,7 @@ GraalVM native-image support for a statically linked JavaFX 26. The image contai
 code, so on Windows the executable runs from an empty directory with no FX DLLs next to it. On
 Linux the GTK stack and on macOS the system frameworks stay dynamic, see below.
 
-Keep the ordinary `org.openjfx` dependencies from Maven Central and add one line to the
+Keep the ordinary `org.openjfx` dependencies from Maven Central and add two lines to the
 native-image build:
 
 ```xml
@@ -13,28 +13,27 @@ native-image build:
     <artifactId>jfx-static-feature</artifactId>
     <version>1.0</version>
 </dependency>
-```
-
-Nothing else: no `--add-exports`, no `-H:CLibraryPath`, no linker flags, no classifier, no OS
-profile, no config files. The feature depends on `jfx-static-libs`, which carries the JavaFX
-reachability metadata and every platform's static archives in one unclassified jar, so Maven and
-Gradle resolve it the same way and nothing has to detect the host.
-
-### Versions
-
-The feature has its own version line and pulls in the JavaFX build as a transitive dependency,
-`jfx-static-libs`, a separate artifact versioned by the JavaFX release it was compiled from. The
-feature pins the one it was tested with, and a consumer picks another JavaFX, say a 26.0.1, by
-naming that artifact directly, the nearer declaration wins. The substitutions have not had to
-follow a JavaFX change in years:
-
-```xml
 <dependency>
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-libs</artifactId>
-    <version>26.0.1</version>
+    <version>${javafx.version}</version>
+    <scope>runtime</scope>
 </dependency>
 ```
+
+Nothing else: no `--add-exports`, no `-H:CLibraryPath`, no linker flags, no classifier, no OS
+profile, no config files. `jfx-static-libs` carries the JavaFX reachability metadata and every
+platform's static archives in one unclassified jar, so Maven and Gradle resolve it the same way
+and nothing has to detect the host.
+
+### Versions
+
+The feature has its own version line and does not pin a JavaFX. `jfx-static-libs` is versioned by
+the JavaFX release it was compiled from, so the consumer declares it with the same
+`<javafx.version>` as the `org.openjfx` jars and picks another JavaFX, say a 26.0.1, by changing
+that one property. The feature aborts the build when the jar is missing or its version differs
+from the JavaFX on the class path, so a stale pin shows up as a message rather than as a link
+error. The substitutions have not had to follow a JavaFX change in years.
 
 `jfx-static-examples/example-hellofx` is the whole recipe, its parent pom holds the dependencies
 and the plugin setup and `mvn -Pnative package` there produces a running executable.
@@ -58,9 +57,9 @@ something has to name. Naming them here keeps every consumer from carrying the l
 `NativeLibraries` API behind it goes through a linker invocation transformer in `beforeImageWrite`:
 the macOS frameworks and the `-force_load` of `libglass.a`, and `g_thread_init` on Linux.
 
-The archives themselves come out of the `jfx-static-libs` jar, see below. Without one for the
-platform on the class path the feature logs a line and switches itself off, so an image that loads
-JavaFX dynamically is unaffected by the feature jar being around.
+The archives themselves come out of the `jfx-static-libs` jar, see below. The feature only stays
+off on a platform it has no archives for; a missing jar or one built from another JavaFX than the
+jars on the class path aborts the build with the coordinates to declare.
 
 It also registers the no-argument constructor of every reachable `Application` subclass. Oracle's
 built-in `JavaFXFeature` registers the subclasses for reflection but not the constructor, which is

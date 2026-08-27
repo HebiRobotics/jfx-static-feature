@@ -39,6 +39,12 @@
             <artifactId>jfx-static-feature</artifactId>
             <version>${jfx.static.feature.version}</version>
         </dependency>
+        <dependency>
+            <groupId>us.hebi.graalvm</groupId>
+            <artifactId>jfx-static-libs</artifactId>
+            <version>${javafx.version}</version>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 
     <build>

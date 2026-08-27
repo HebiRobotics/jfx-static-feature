@@ -50,7 +50,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <graalvm.version>25.0.1</graalvm.version>
         <javafx.version>26</javafx.version>
-        <javafx.static.version>26</javafx.static.version>
         <gpg.keyname/>
     </properties>
 
@@ -72,12 +71,6 @@
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>us.hebi.graalvm</groupId>
-            <artifactId>jfx-static-libs</artifactId>
-            <version>${javafx.static.version}</version>
-            <scope>runtime</scope>
         </dependency>
     </dependencies>
 

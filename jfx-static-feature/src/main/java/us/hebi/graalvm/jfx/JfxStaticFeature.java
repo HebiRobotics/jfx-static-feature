@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -97,6 +98,10 @@ public class JfxStaticFeature implements Feature {
     // Where jfx-static-libs keeps the archives of every platform
     private static final String LIBS_RESOURCES = "/us/hebi/graalvm/jfx/libs/";
 
+    // Versions of the libs jar and of the JavaFX jars, shipped in jfx-static-libs and javafx-base
+    private static final String LIBS_VERSION_RESOURCE = LIBS_RESOURCES + "version.properties";
+    private static final String JAVAFX_VERSION_RESOURCE = "/javafx.properties";
+
     // Where beforeAnalysis unpacked the archives, needed again for the macOS -force_load
     private Path staticLibraryDirectory;
 
@@ -111,11 +116,39 @@ public class JfxStaticFeature implements Feature {
             System.out.println("JfxStaticFeature: no static JavaFX libraries known for this platform, staying off");
             return false;
         }
+        String javafxVersion = readProperty(JAVAFX_VERSION_RESOURCE, "javafx.version");
+        String libsCoordinates = "us.hebi.graalvm:jfx-static-libs:" + (javafxVersion != null ? javafxVersion : "<javafx.version>");
         if (JfxStaticFeature.class.getResource(libsResource(staticLibraries().get(0))) == null) {
-            System.out.println("JfxStaticFeature: no jfx-static-libs jar for " + platform + " on the class path, staying off");
-            return false;
+            throw UserError.abort("No jfx-static-libs jar for " + platform + " on the class path, add " + libsCoordinates);
+        }
+        String libsVersion = readProperty(LIBS_VERSION_RESOURCE, "version");
+        if (libsVersion == null) {
+            throw UserError.abort("The jfx-static-libs jar predates the version check, use " + libsCoordinates);
+        }
+        if (javafxVersion != null && !release(libsVersion).equals(release(javafxVersion))) {
+            throw UserError.abort("jfx-static-libs " + libsVersion + " does not match the JavaFX " + javafxVersion
+                    + " on the class path, declare both with the same <javafx.version>");
         }
         return true;
+    }
+
+    // 26.0.2-1 matches 26.0.2, and 26-ea+3 reads as 26
+    private static String release(String version) {
+        int dash = version.indexOf('-');
+        return dash < 0 ? version : version.substring(0, dash);
+    }
+
+    private static String readProperty(String resource, String key) {
+        try (InputStream input = JfxStaticFeature.class.getResourceAsStream(resource)) {
+            if (input == null) {
+                return null;
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty(key);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException("Could not read " + resource, ioe);
+        }
     }
 
     @Override
