@@ -1,6 +1,6 @@
 us.hebi.graalvm:jfx-static-libs:${project.version}
 
-The static libraries under us/hebi/graalvm/jfx/natives/ and the reachability metadata under
+The static libraries under us/hebi/graalvm/jfx/libs/ and the reachability metadata under
 META-INF/native-image/ are build output of OpenJFX, licensed under the GNU General Public License
 version 2 with the Classpath Exception. The license text and the third party notices that apply to
 them are in META-INF/legal/.
