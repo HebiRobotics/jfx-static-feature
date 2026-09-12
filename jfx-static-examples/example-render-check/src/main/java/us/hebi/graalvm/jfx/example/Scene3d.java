@@ -50,7 +50,8 @@ class Scene3d implements Scenario {
         if (Platform.isSupported(ConditionalFeature.SCENE3D)) {
             return null;
         }
-        return "ConditionalFeature.SCENE3D is missing on prism.order=" + System.getProperty("prism.order");
+        return "ConditionalFeature.SCENE3D is missing on prism.order="
+                + System.getProperty("prism.order", "default");
     }
 
     @Override

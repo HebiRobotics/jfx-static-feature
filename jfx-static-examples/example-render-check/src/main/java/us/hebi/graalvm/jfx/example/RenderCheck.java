@@ -21,7 +21,8 @@ import javafx.stage.Stage;
  * {@code richtext} the incubator rich text controls including an RTF import. A stage whose conditional
  * feature is missing is skipped rather than failed.
  * The pipeline defaults to sw and follows a {@code -Dprism.order=d3d} (es2, mtl) argument, which a
- * native image accepts on the command line, so the same binary checks the GPU path. The glass
+ * native image accepts on the command line, so the same binary checks the GPU path, and
+ * {@code -Dprism.order=default} leaves the order to prism. The glass
  * platform defaults to Headless the same way and {@code -Dglass.platform=Win} (Gtk, Mac) shows the scenes
  * in real windows for debugging.
  *
@@ -48,7 +49,12 @@ public class RenderCheck {
 
         // Defaults that a -D argument on the command line overrides, set before the toolkit starts
         setDefault("glass.platform", "Headless"); // Win, Gtk, Mac, Headless
-        setDefault("prism.order", "sw"); // d3d, mtl, es2, sw
+        setDefault("prism.order", "sw"); // d3d, mtl, es2, sw, default
+        String order = System.getProperty("prism.order");
+        if (order.equals("default")) {
+            // Unset is what prism reads as its own order, mtl before es2 on macOS 27
+            System.clearProperty("prism.order");
+        }
         setDefault("javafx.enablePreview", "true"); // StageStyle.EXTENDED and HeaderBar throw without it
         if (Files.isDirectory(Path.of("/sys/bus/platform/drivers/v3d"))) {
             // Mesa's V3D reports "Broadcom", which X11GLFactory's vendor list rejects
@@ -56,7 +62,7 @@ public class RenderCheck {
         }
 
         String label = System.getProperty("os.name").split(" ")[0].toLowerCase() + "-" + System.getProperty("os.arch")
-                + "-" + System.getProperty("prism.order").replace(' ', '_') + "-" + System.getProperty("glass.platform");
+                + "-" + order.replace(' ', '_') + "-" + System.getProperty("glass.platform");
         String explicitOutput = args.length > 0 ? args[0] : null;
         long start = System.nanoTime();
 
