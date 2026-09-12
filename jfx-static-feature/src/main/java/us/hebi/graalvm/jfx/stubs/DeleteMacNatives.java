@@ -17,13 +17,23 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class DeleteMacNatives {
 
     @Delete
-    @TargetClass(className = "com.sun.javafx.font.DFontDecoder", onlyWith = NotMacOs.class)
+    @TargetClass(className = "com.sun.javafx.font.DFontDecoder", onlyWith = {NotMacOs.class, ClassPresent.class})
     static final class Target_DFontDecoder {
     }
 
     @Delete
-    @TargetClass(className = "com.sun.javafx.font.MacFontFinder", onlyWith = NotMacOs.class)
+    @TargetClass(className = "com.sun.javafx.font.MacFontFinder", onlyWith = {NotMacOs.class, ClassPresent.class})
     static final class Target_MacFontFinder {
+    }
+
+    @Delete
+    @TargetClass(className = "com.sun.javafx.font.coretext.CTFactory", onlyWith = {NotMacOs.class, ClassPresent.class})
+    static final class Target_CTFactory {
+    }
+
+    @Delete
+    @TargetClass(className = "com.sun.javafx.font.coretext.OS", onlyWith = {NotMacOs.class, ClassPresent.class})
+    static final class Target_CoreTextOS {
     }
 
     static final class NotMacOs implements BooleanSupplier {

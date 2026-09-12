@@ -1,5 +1,6 @@
 package us.hebi.graalvm.jfx.stubs;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import org.graalvm.nativeimage.Platform;
@@ -22,7 +23,7 @@ final class DeleteWindowsNatives {
      * The Windows stubs sit on the base class, so we can't delete the whole class and need to
      * stub the individual methods instead.
      */
-    @TargetClass(className = "com.sun.javafx.font.PrismFontFactory", onlyWith = NotWindows.class)
+    @TargetClass(className = "com.sun.javafx.font.PrismFontFactory", onlyWith = {NotWindows.class, ClassPresent.class})
     static final class Target_PrismFontFactory {
 
         @Substitute
@@ -58,6 +59,16 @@ final class DeleteWindowsNatives {
             throw unsupported("populateFontFileNameMap");
         }
 
+    }
+
+    @Delete
+    @TargetClass(className = "com.sun.javafx.font.directwrite.DWFactory", onlyWith = {NotWindows.class, ClassPresent.class})
+    static final class Target_DWFactory {
+    }
+
+    @Delete
+    @TargetClass(className = "com.sun.javafx.font.directwrite.OS", onlyWith = {NotWindows.class, ClassPresent.class})
+    static final class Target_DirectWriteOS {
     }
 
     private static UnsupportedOperationException unsupported(String method) {

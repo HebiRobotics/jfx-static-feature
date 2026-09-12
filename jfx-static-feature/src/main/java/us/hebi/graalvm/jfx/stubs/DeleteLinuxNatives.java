@@ -16,18 +16,45 @@ import java.util.function.BooleanSupplier;
 final class DeleteLinuxNatives {
 
     @Delete
-    @TargetClass(className = "com.sun.javafx.font.freetype.FTFactory", onlyWith = NotLinux.class)
+    @TargetClass(className = "com.sun.javafx.font.freetype.FTFactory", onlyWith = {NotLinux.class, ClassPresent.class})
     static final class Target_FTFactory {
     }
 
     @Delete
-    @TargetClass(className = "com.sun.javafx.font.FontConfigManager", onlyWith = NotLinux.class)
+    @TargetClass(className = "com.sun.javafx.font.FontConfigManager", onlyWith = {NotLinux.class, ClassPresent.class})
     static final class Target_FontConfigManager {
+    }
+
+    @Delete
+    @TargetClass(className = "com.sun.javafx.font.freetype.OSFreetype", onlyWith = {NotLinux.class, ClassPresent.class})
+    static final class Target_OSFreetype {
+    }
+
+    @Delete
+    @TargetClass(className = "com.sun.javafx.font.freetype.OSPango", onlyWith = {NotLinux.class, ClassPresent.class})
+    static final class Target_OSPango {
+    }
+
+    /**
+     * Declared in OSFreetype but implemented in no native archive on any OS
+     */
+    @TargetClass(className = "com.sun.javafx.font.freetype.OSFreetype", onlyWith = {IsLinux.class, ClassPresent.class})
+    static final class Target_OSFreetype_Linux {
+
+        @Delete
+        static native int FT_Get_Char_Index(long face, long charcode);
+
     }
 
     static final class NotLinux implements BooleanSupplier {
         public boolean getAsBoolean() {
             return !Platform.includedIn(Platform.LINUX.class);
+        }
+    }
+
+    static final class IsLinux implements BooleanSupplier {
+        public boolean getAsBoolean() {
+            return Platform.includedIn(Platform.LINUX.class);
         }
     }
 

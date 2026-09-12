@@ -16,7 +16,7 @@ import java.util.function.BooleanSupplier;
 final class DeleteIosNatives {
 
     @Delete
-    @TargetClass(className = "com.sun.javafx.iio.ios.IosImageLoader", onlyWith = NotIos.class)
+    @TargetClass(className = "com.sun.javafx.iio.ios.IosImageLoader", onlyWith = {NotIos.class, ClassPresent.class})
     static final class Target_IosImageLoader {
     }
 
