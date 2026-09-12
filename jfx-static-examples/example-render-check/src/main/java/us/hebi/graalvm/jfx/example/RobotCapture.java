@@ -2,6 +2,8 @@ package us.hebi.graalvm.jfx.example;
 
 import java.util.List;
 
+import com.sun.prism.GraphicsPipeline;
+import com.sun.prism.sw.SWPipeline;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -38,11 +40,12 @@ class RobotCapture implements Scenario {
 
     @Override
     public String skipReason() {
-        // Only the sw pipeline uploads into the headless framebuffer, a GPU pipeline leaves it empty
-        String platform = System.getProperty("glass.platform");
-        String order = System.getProperty("prism.order");
-        if (platform.equals("Headless") && !order.equals("sw")) {
-            return "the headless framebuffer is empty on prism.order=" + order;
+        // Only the sw pipeline uploads into the headless framebuffer, a GPU pipeline leaves it empty. The
+        // running pipeline decides, not prism.order, which reads "default" wherever the GPU order fell back
+        if (System.getProperty("glass.platform").equals("Headless")
+                && !(GraphicsPipeline.getPipeline() instanceof SWPipeline)) {
+            return "the headless framebuffer is empty on "
+                    + GraphicsPipeline.getPipeline().getClass().getSimpleName();
         }
         try {
             robot = new Robot();
@@ -69,10 +72,9 @@ class RobotCapture implements Scenario {
         // A window manager may place the window elsewhere, so read back where it ended up
         int x = (int) window.getX();
         int y = (int) window.getY();
-        int centerX = x + WIDTH / 2;
-        int centerY = y + HEIGHT / 2;
-        robot.mouseMove(centerX, centerY);
-        mousePixel = robot.getPixelColor(centerX, centerY);
+        // macOS composites the cursor into captures, so the sampled pixel keeps its distance from the mouse
+        robot.mouseMove(x + WIDTH / 4, y + HEIGHT / 4);
+        mousePixel = robot.getPixelColor(x + 3 * WIDTH / 4, y + 3 * HEIGHT / 4);
         // The four argument overload scales to fit, so the capture is in logical pixels like every snapshot
         WritableImage image = robot.getScreenCapture(null, x, y, WIDTH, HEIGHT);
         window.close();
@@ -85,7 +87,7 @@ class RobotCapture implements Scenario {
             return;
         }
         if (!Pixels.matches(mousePixel, FILL, Pixels.SOLID)) {
-            problems.add("the screen under the mouse is " + mousePixel + " rather than " + FILL);
+            problems.add("the screen inside the window is " + mousePixel + " rather than " + FILL);
         }
         Pixels.checkPixel(problems, image, WIDTH / 2, HEIGHT / 2, FILL, "the center of the screen capture");
     }
