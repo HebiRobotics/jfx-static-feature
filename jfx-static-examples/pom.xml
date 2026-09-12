@@ -15,6 +15,7 @@
 
     <modules>
         <module>example-hellofx</module>
+        <module>example-jni-metadata</module>
         <module>example-render-check</module>
     </modules>
 
