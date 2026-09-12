@@ -55,8 +55,7 @@ class TitleBar implements Scenario {
 
         Stage window = new Stage();
         window.initStyle(StageStyle.EXTENDED);
-        // The platform draws its caption buttons at this height, and the scene fill picks their color scheme
-        HeaderBar.setPrefButtonHeight(window, HEADER_HEIGHT);
+        // No button height override, 27 renamed setPrefButtonHeight and the checks do not depend on it
         return Scenario.snapshot(window, new Scene(root, WIDTH, HEIGHT, BACKGROUND));
     }
 

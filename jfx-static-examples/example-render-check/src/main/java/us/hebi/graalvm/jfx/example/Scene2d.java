@@ -3,7 +3,6 @@ package us.hebi.graalvm.jfx.example;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 
 import javafx.fxml.FXMLLoader;
@@ -144,8 +143,7 @@ class Scene2d implements Scenario {
 
         Scene scene = new Scene(root, WIDTH, HEIGHT, BACKGROUND);
         scene.getStylesheets().add(Scene2d.class.getResource("check.css").toExternalForm());
-        scene.getStylesheets().add("data:text/css;base64,"
-                + Base64.getEncoder().encodeToString(STYLESHEET.getBytes(StandardCharsets.UTF_8)));
+        scene.getStylesheets().add(Scenario.dataUrl(STYLESHEET));
         return Scenario.snapshot(new Stage(), scene);
     }
 

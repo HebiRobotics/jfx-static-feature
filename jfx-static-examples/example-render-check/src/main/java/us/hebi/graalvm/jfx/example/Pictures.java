@@ -33,6 +33,10 @@ class Pictures {
     }
 
     static Image png(int size, Color color) {
+        return new Image(new ByteArrayInputStream(pngBytes(size, color)));
+    }
+
+    static byte[] pngBytes(int size, Color color) {
         WritableImage square = new WritableImage(size, size);
         for (int y = 0; y < size; y++) {
             for (int x = 0; x < size; x++) {
@@ -40,7 +44,7 @@ class Pictures {
             }
         }
         try {
-            return new Image(new ByteArrayInputStream(Png.encode(square)));
+            return Png.encode(square);
         } catch (IOException ioe) {
             throw new IllegalStateException("Could not encode the test picture", ioe);
         }

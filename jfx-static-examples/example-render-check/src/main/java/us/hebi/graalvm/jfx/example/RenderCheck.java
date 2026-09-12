@@ -30,16 +30,22 @@ import javafx.stage.Stage;
  */
 public class RenderCheck {
 
-    private static final Scenario[] SCENARIOS = {
+    private static final List<Scenario> scenarios = new ArrayList<>(List.of(
             new Scene2d(), new Scene3d(), new TitleBar(),
-            new AlertDialog(), new PopupMenu(), new RobotCapture(), new RichText()
-    };
+            new AlertDialog(), new PopupMenu(), new RobotCapture(), new RichText()));
 
     private static final Map<String, WritableImage> snapshots = new LinkedHashMap<>();
     private static final Map<String, String> skipped = new LinkedHashMap<>();
     private static Throwable failure;
 
     public static void main(String[] args) throws Exception {
+        run(args);
+    }
+
+    /** Runs the stages above plus the ones a module built against a newer JavaFX adds */
+    static void run(String[] args, Scenario... extra) throws Exception {
+        scenarios.addAll(List.of(extra));
+
         // Defaults that a -D argument on the command line overrides, set before the toolkit starts
         setDefault("glass.platform", "Headless"); // Win, Gtk, Mac, Headless
         setDefault("prism.order", "sw"); // d3d, mtl, es2, sw
@@ -63,7 +69,7 @@ public class RenderCheck {
         }
 
         List<String> problems = new ArrayList<>();
-        for (Scenario stage : SCENARIOS) {
+        for (Scenario stage : scenarios) {
             WritableImage image = snapshots.get(stage.name());
             if (image == null) {
                 continue;
@@ -85,7 +91,7 @@ public class RenderCheck {
         @Override
         public void start(Stage primary) {
             try {
-                for (Scenario stage : SCENARIOS) {
+                for (Scenario stage : scenarios) {
                     String reason = stage.skipReason();
                     if (reason == null) {
                         snapshots.put(stage.name(), stage.render());

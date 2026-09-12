@@ -1,5 +1,7 @@
 package us.hebi.graalvm.jfx.example;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 import javafx.scene.Scene;
@@ -23,6 +25,12 @@ interface Scenario {
     WritableImage render();
 
     void check(WritableImage image, List<String> problems);
+
+    /** A stylesheet inlined as a URL, which is the path a class path resource does not cover */
+    static String dataUrl(String stylesheet) {
+        return "data:text/css;base64,"
+                + Base64.getEncoder().encodeToString(stylesheet.getBytes(StandardCharsets.UTF_8));
+    }
 
     // Every stage shows its window so a -Dglass.platform=Win run goes through a real peer, and closes it again
     static WritableImage snapshot(Stage window, Scene scene) {
