@@ -108,6 +108,9 @@
                                         <include name="${fx.reference.lib}/javafx.graphics.jar"/>
                                         <include name="${fx.reference.lib}/javafx.controls.jar"/>
                                         <include name="${fx.reference.lib}/javafx.fxml.jar"/>
+                                        <include name="${fx.reference.lib}/javafx.media.jar"/>
+                                        <include name="${fx.reference.lib}/javafx.web.jar"/>
+                                        <include name="${fx.reference.lib}/javafx.swing.jar"/>
                                         <include name="${fx.reference.lib}/jfx.incubator.input.jar"/>
                                         <include name="${fx.reference.lib}/jfx.incubator.richtext.jar"/>
                                     </patternset>

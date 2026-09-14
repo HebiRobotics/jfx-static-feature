@@ -13,12 +13,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.security.CodeSource;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Links the static JavaFX libraries into the image and tells Substrate that their JNI entry
@@ -133,7 +135,7 @@ public class JfxStaticFeature implements Feature {
         }
         if (javafxVersion != null && !release(libsVersion).equals(release(javafxVersion))) {
             throw UserError.abort("jfx-static-libs " + libsVersion + " does not match the JavaFX " + javafxVersion
-                    + " on the class path, declare both with the same <javafx.version>");
+                                  + " on the class path, declare both with the same <javafx.version>");
         }
 
         // Validated here so a typo aborts early
@@ -214,6 +216,79 @@ public class JfxStaticFeature implements Feature {
             RuntimeReflection.register(applicationClass);
             RuntimeReflection.register(applicationClass.getDeclaredConstructors());
         }, access.findClassByName("javafx.application.Application"));
+
+        // Register web/media as shared libraries if their main entry points are reachable.
+        // The required binaries are copied to the output directory from the stock platform jars.
+        registerSharedLibraryModule(access, "javafx.media", "com.sun.media.jfxmediaimpl.NativeMediaManager");
+        registerSharedLibraryModule(access, "javafx.web", "com.sun.webkit.WebPage");
+    }
+
+    // Media and webkit exist only as shared libraries, shipped inside the platform jars.
+    // When a module's loader class is reachable, its jar's libraries get copied next to the image.
+    private final Map<String, Path> sharedLibraryJars = new LinkedHashMap<>();
+
+    private void registerSharedLibraryModule(BeforeAnalysisAccess access, String module, String loaderClassName) {
+        Class<?> loader = access.findClassByName(loaderClassName);
+        if (loader == null) {
+            return;
+        }
+        access.registerReachabilityHandler(duringAnalysis -> {
+            CodeSource source = loader.getProtectionDomain().getCodeSource();
+            if (source == null || source.getLocation() == null) {
+                System.out.println("JfxStaticFeature: " + module + " is reachable but has no code source,"
+                                   + " ship its shared libraries next to the image manually");
+                return;
+            }
+            try {
+                sharedLibraryJars.put(module, Path.of(source.getLocation().toURI()));
+            } catch (URISyntaxException e) {
+                throw new IllegalStateException("Could not resolve the " + module + " jar", e);
+            }
+        }, loader);
+    }
+
+    @Override
+    public void afterImageWrite(AfterImageWriteAccess access) {
+        Path directory = access.getImagePath().toAbsolutePath().getParent();
+        sharedLibraryJars.forEach((module, jar) -> copySharedLibraries(module, jar, directory));
+    }
+
+    private static void copySharedLibraries(String module, Path jar, Path directory) {
+        int copied = 0;
+        try {
+            if (Files.isDirectory(jar)) {
+                try (var files = Files.list(jar)) {
+                    for (Path file : files.filter(f -> isSharedLibrary(f.getFileName().toString())).toList()) {
+                        Files.copy(file, directory.resolve(file.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
+                        copied++;
+                    }
+                }
+            } else {
+                try (ZipFile zip = new ZipFile(jar.toFile())) {
+                    for (Enumeration<? extends ZipEntry> entries = zip.entries(); entries.hasMoreElements(); ) {
+                        ZipEntry entry = entries.nextElement();
+                        if (!entry.getName().contains("/") && isSharedLibrary(entry.getName())) {
+                            try (InputStream stream = zip.getInputStream(entry)) {
+                                Files.copy(stream, directory.resolve(entry.getName()), StandardCopyOption.REPLACE_EXISTING);
+                                copied++;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (IOException ioe) {
+            throw new UncheckedIOException("Could not copy the " + module + " shared libraries", ioe);
+        }
+        if (copied == 0) {
+            System.out.println("JfxStaticFeature: " + module + " is reachable but " + jar.getFileName()
+                               + " ships no shared libraries, use the platform classifier jar or ship them manually");
+        } else {
+            System.out.println("JfxStaticFeature: copied " + copied + " " + module + " shared libraries next to the image");
+        }
+    }
+
+    private static boolean isSharedLibrary(String name) {
+        return name.endsWith(".dll") || name.endsWith(".so") || name.endsWith(".dylib") || name.contains(".so.");
     }
 
     @Override
