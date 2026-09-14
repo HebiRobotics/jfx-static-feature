@@ -23,7 +23,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>26.0.2</javafx.version>
-        <jfx.static.version>${javafx.version}</jfx.static.version> <!-- separate for testing ga releases -->
+        <jfx.static.version>26.0.2-1</jfx.static.version> <!-- separate for testing ga releases -->
         <jfx.static.feature.version>1.0-SNAPSHOT</jfx.static.feature.version>
         <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
         <maven.install.skip>true</maven.install.skip> <!-- examples are only built -->
