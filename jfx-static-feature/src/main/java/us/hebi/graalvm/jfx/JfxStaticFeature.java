@@ -306,8 +306,9 @@ public class JfxStaticFeature implements Feature {
     // Linker syntax that has no NativeLibraries API behind it
     private List<String> linkerOptions(BeforeImageWriteAccessImpl access) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            // glassgtk3 references g_thread_init, which glib dropped. Absolute value because =abort only works on x86_64 by link order
-            return List.of("-Wl,--defsym,g_thread_init=0");
+            // 1. glassgtk3 references g_thread_init, which glib dropped
+            // 2. the libjfxwebkit.so's lookup requires an old style -rpath to find libjvm.so next to it
+            return List.of("-Wl,--defsym,g_thread_init=0", "-Wl,--disable-new-dtags", "-Wl,-rpath,$ORIGIN");
         } else if (Platform.includedIn(Platform.MACOS.class)) {
             // The GlassWindow categories define no symbol the linker looks for and get dropped otherwise
             List<String> options = new ArrayList<>();

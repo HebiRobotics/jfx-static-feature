@@ -102,7 +102,7 @@ public final class NativeLibraryLoading {
                 case "prism_sw" -> onLoadPrismSw(vm, reserved);
                 case "javafx_font" -> onLoadJavafxFont(vm, reserved);
                 case "javafx_iio" -> onLoadJavafxIio(vm, reserved);
-                case "decora_sse" -> JNI_VERSION_1_8; // no JNI_OnLoad
+                case "decora_sse", "prism_common" -> JNI_VERSION_1_8; // no JNI_OnLoad
                 case "glib-lite", "gstreamer-lite", "jfxmedia", "jfxwebkit" -> DYNAMIC_LIBRARY;
                 default -> throw new UnsatisfiedLinkError(libname + " is not linked into this image");
             };
@@ -141,7 +141,7 @@ public final class NativeLibraryLoading {
                 case "javafx_font_freetype" -> onLoadJavafxFontFreetype(vm, reserved);
                 case "javafx_font_pango" -> onLoadJavafxFontPango(vm, reserved);
                 case "javafx_iio" -> onLoadJavafxIio(vm, reserved);
-                case "decora_sse" -> JNI_VERSION_1_8; // no JNI_OnLoad
+                case "decora_sse", "prism_common" -> JNI_VERSION_1_8; // no JNI_OnLoad
                 case "glib-lite", "gstreamer-lite", "jfxmedia", "jfxwebkit" -> DYNAMIC_LIBRARY;
                 default -> throw new UnsatisfiedLinkError(libname + " is not linked into this image");
             };
@@ -186,7 +186,7 @@ public final class NativeLibraryLoading {
                 case "prism_sw" -> onLoadPrismSw(vm, reserved);
                 case "javafx_font" -> onLoadJavafxFont(vm, reserved);
                 case "javafx_iio" -> onLoadJavafxIio(vm, reserved);
-                case "decora_sse", "prism_mtl" -> JNI_VERSION_1_8; // no JNI_OnLoad
+                case "decora_sse", "prism_common", "prism_mtl" -> JNI_VERSION_1_8; // no JNI_OnLoad
                 case "glib-lite", "gstreamer-lite", "jfxmedia", "jfxmedia_avf", "jfxwebkit" -> DYNAMIC_LIBRARY;
                 default -> throw new UnsatisfiedLinkError(libname + " is not linked into this image");
             };
