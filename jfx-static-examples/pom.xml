@@ -16,6 +16,7 @@
     <modules>
         <module>example-hellofx</module>
         <module>example-jni-metadata</module>
+        <module>example-dynamic-check</module>
         <module>example-render-check</module>
     </modules>
 
@@ -25,6 +26,7 @@
         <javafx.version>26.0.2</javafx.version>
         <jfx.static.version>26.0.2-1</jfx.static.version> <!-- separate for testing ga releases -->
         <jfx.static.feature.version>1.0-SNAPSHOT</jfx.static.feature.version>
+        <native.optimization>2</native.optimization> <!-- -Dnative.optimization=b for quick exploration builds -->
         <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
         <maven.install.skip>true</maven.install.skip> <!-- examples are only built -->
         <maven.deploy.skip>true</maven.deploy.skip>
@@ -72,6 +74,9 @@
                     </executions>
                     <configuration>
                         <fallback>false</fallback>
+                        <buildArgs>
+                            <buildArg>-O${native.optimization}</buildArg>
+                        </buildArgs>
                         <!-- Disable fallback metadata repo for a clean test -->
                         <metadataRepository>
                             <enabled>false</enabled>

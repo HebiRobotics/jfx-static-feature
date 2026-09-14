@@ -59,6 +59,18 @@ jobs:
           cd jfx-static-examples/example-render-check/target
           ./render-check
 
+      # Media, web and swing checks share one image, built once and selected by argument
+      - name: build the shared-library checks
+        run: mvn -B -Pnative package -pl jfx-static-examples/example-dynamic-check -am
+
+      # Headless glass keeps the run display-free on every OS; media needs an audio device
+      # and swing a real toolkit, so those two only link here
+      - name: run the web check
+        shell: bash
+        run: |
+          cd jfx-static-examples/example-dynamic-check/target
+          ./check-dynamic web "-Dglass.platform=Headless" "-Dprism.order=sw"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
