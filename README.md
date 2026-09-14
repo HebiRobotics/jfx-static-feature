@@ -69,6 +69,14 @@ what `LauncherImpl.launchApplication1` instantiates them through, so `getConstru
 class the reflection system otherwise knows about. The handler only fires for subclasses the
 analysis already reached, so unused launchers in the same jar cost nothing.
 
+On Windows an executable that reaches an `Application` subclass links as a GUI application
+(`/SUBSYSTEM:WINDOWS` with an `/ENTRY` that keeps the plain `main`), so starting it from Explorer
+opens no console window. `-Djfx.static.gui=true|false` on the native-image command line overrides
+the default in either direction, e.g. for a console tool that renders FX offscreen. The property
+is ignored for shared libraries and on the other platforms, so one build script can set it
+everywhere. A GUI binary prints nothing into the console it was started from, though redirected
+output still arrives.
+
 The rest of the jar is substitutions, grouped by the problem they solve:
 
 | Class | Platform | Problem |

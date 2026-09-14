@@ -1,5 +1,14 @@
 package us.hebi.graalvm.jfx;
 
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -10,15 +19,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
 
 /**
  * Links the static JavaFX libraries into the image and tells Substrate that their JNI entry
@@ -105,11 +105,17 @@ public class JfxStaticFeature implements Feature {
     // Where beforeAnalysis unpacked the archives, needed again for the macOS -force_load
     private Path staticLibraryDirectory;
 
+    // Opt-in/out for the Windows GUI subsystem. Unset activates if an Application is reachable
+    private static final String GUI_PROPERTY = "jfx.static.gui";
+    private Boolean forceGuiMode;
+    private boolean imageContainsApplication = false;
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         if (access.findClassByName("javafx.application.Application") == null) {
             return false;
         }
+
         // Without archives the substitutions would break a dynamic FX image, so stay off
         String platform = platformName();
         if (platform == null) {
@@ -129,6 +135,16 @@ public class JfxStaticFeature implements Feature {
             throw UserError.abort("jfx-static-libs " + libsVersion + " does not match the JavaFX " + javafxVersion
                     + " on the class path, declare both with the same <javafx.version>");
         }
+
+        // Validated here so a typo aborts early
+        String gui = System.getProperty(GUI_PROPERTY, "auto");
+        forceGuiMode = switch (gui) {
+            case "auto" -> null;
+            case "true" -> true;
+            case "false" -> false;
+            default -> throw UserError.abort("-D" + GUI_PROPERTY + " must be true, false, or auto, not: " + gui);
+        };
+
         return true;
     }
 
@@ -194,6 +210,7 @@ public class JfxStaticFeature implements Feature {
         // Application.launch() needs the subclass by name and its no-arg constructor, which the built-in
         // JavaFXFeature does not register. Only reachable types show up here, so we don't add extra classes.
         access.registerSubtypeReachabilityHandler((duringAnalysis, applicationClass) -> {
+            imageContainsApplication = true;
             RuntimeReflection.register(applicationClass);
             RuntimeReflection.register(applicationClass.getDeclaredConstructors());
         }, access.findClassByName("javafx.application.Application"));
@@ -201,18 +218,18 @@ public class JfxStaticFeature implements Feature {
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        List<String> options = linkerOptions();
+        List<String> options = linkerOptions((BeforeImageWriteAccessImpl) access);
         if (options.isEmpty()) {
             return;
         }
-        ((FeatureImpl.BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+        ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             options.forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
     }
 
     // Linker syntax that has no NativeLibraries API behind it
-    private List<String> linkerOptions() {
+    private List<String> linkerOptions(BeforeImageWriteAccessImpl access) {
         if (Platform.includedIn(Platform.LINUX.class)) {
             // glassgtk3 references g_thread_init, which glib dropped. Absolute value because =abort only works on x86_64 by link order
             return List.of("-Wl,--defsym,g_thread_init=0");
@@ -224,6 +241,13 @@ public class JfxStaticFeature implements Feature {
                 options.add("-Wl,-framework," + framework);
             }
             return options;
+        } else if (Platform.includedIn(Platform.WINDOWS.class)) {
+            // Remove the extra console window on Windows. The GUI-subsystem
+            // CRT expects WinMain, /ENTRY keeps the startup that calls main
+            boolean removeConsole = forceGuiMode != null ? forceGuiMode : imageContainsApplication;
+            if (removeConsole && access.getImage().getImageKind().isExecutable) {
+                return List.of("/SUBSYSTEM:WINDOWS", "/ENTRY:mainCRTStartup");
+            }
         }
         return List.of();
     }
