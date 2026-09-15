@@ -5,6 +5,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -278,8 +280,9 @@ public class JfxStaticFeature implements Feature {
             return;
         }
         try {
-            Process process = new ProcessBuilder("cc", "-shared", "-x", "c", "/dev/null",
-                    "-Wl,-install_name,@rpath/libjvm.dylib", "-o", shim.toString())
+            List<String> command = ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(
+                    List.of("-shared", "-x", "c", "-Wl,-install_name,@rpath/libjvm.dylib"), shim, Path.of("/dev/null"));
+            Process process = new ProcessBuilder(command)
                     .redirectErrorStream(true)
                     .start();
             String output = new String(process.getInputStream().readAllBytes());
