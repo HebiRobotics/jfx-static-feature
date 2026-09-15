@@ -265,6 +265,34 @@ public class JfxStaticFeature implements Feature {
     public void afterImageWrite(AfterImageWriteAccess access) {
         Path directory = access.getImagePath().toAbsolutePath().getParent();
         sharedLibraryJars.forEach((module, jar) -> copySharedLibraries(module, jar, directory));
+        if (Platform.includedIn(Platform.MACOS.class) && sharedLibraryJars.containsKey("javafx.web")) {
+            writeJvmShim(directory);
+        }
+    }
+
+    // libjfxwebkit.dylib links @rpath/libjvm.dylib but imports nothing. GraalVM 25.0 creates shims
+    // only for Windows/Linux, and GraalVM 25.3 creates shims only for AWT or -H:+CreateJvmShim
+    private static void writeJvmShim(Path directory) {
+        Path shim = directory.resolve("libjvm.dylib");
+        if (Files.exists(shim)) {
+            return;
+        }
+        try {
+            Process process = new ProcessBuilder("cc", "-shared", "-x", "c", "/dev/null",
+                    "-Wl,-install_name,@rpath/libjvm.dylib", "-o", shim.toString())
+                    .redirectErrorStream(true)
+                    .start();
+            String output = new String(process.getInputStream().readAllBytes());
+            if (process.waitFor() != 0) {
+                throw new IllegalStateException("Could not create " + shim + ":\n" + output);
+            }
+        } catch (IOException ioe) {
+            throw new UncheckedIOException("Could not create " + shim, ioe);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while creating " + shim, e);
+        }
+        System.out.println("JfxStaticFeature: created the empty libjvm.dylib needed by libjfxwebkit.dylib");
     }
 
     private static void copySharedLibraries(String module, Path jar, Path directory) {
