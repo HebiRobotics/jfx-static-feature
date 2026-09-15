@@ -17,8 +17,9 @@ import javafx.stage.Stage;
  * writes the snapshots as PNGs. The {@code 2d} stage covers shapes, effects, a canvas, image decoding, a
  * control with its stylesheets, latin and arabic text and an FXML root, {@code 3d} the prism 3d path,
  * {@code titlebar} a preview extended window with a custom title bar, {@code alert} and {@code popup} the dialog and popup windows
- * with the labels the controls resource bundle carries, {@code robot} a window read back off the screen, and
- * {@code richtext} the incubator rich text controls including an RTF import. A stage whose conditional
+ * with the labels the controls resource bundle carries, {@code robot} a window read back off the screen,
+ * {@code richtext} the incubator rich text controls including an RTF import and an embedded image, and
+ * {@code media} the CSS media queries and conditional imports. A stage whose conditional
  * feature is missing is skipped rather than failed.
  * The pipeline defaults to sw and follows a {@code -Dprism.order=d3d} (es2, mtl) argument, which a
  * native image accepts on the command line, so the same binary checks the GPU path, and
@@ -31,22 +32,15 @@ import javafx.stage.Stage;
  */
 public class RenderCheck {
 
-    private static final List<Scenario> scenarios = new ArrayList<>(List.of(
-            new Scene2d(), new Scene3d(), new TitleBar(),
-            new AlertDialog(), new PopupMenu(), new RobotCapture(), new RichText()));
+    private static final List<Scenario> scenarios = List.of(
+            new Scene2d(), new Scene3d(), new TitleBar(), new AlertDialog(), new PopupMenu(),
+            new RobotCapture(), new RichText(), new MediaQuery());
 
     private static final Map<String, WritableImage> snapshots = new LinkedHashMap<>();
     private static final Map<String, String> skipped = new LinkedHashMap<>();
     private static Throwable failure;
 
     public static void main(String[] args) throws Exception {
-        run(args);
-    }
-
-    /** Runs the stages above plus the ones a module built against a newer JavaFX adds */
-    static void run(String[] args, Scenario... extra) throws Exception {
-        scenarios.addAll(List.of(extra));
-
         // Defaults that a -D argument on the command line overrides, set before the toolkit starts
         setDefault("glass.platform", "Headless"); // Win, Gtk, Mac, Headless
         setDefault("prism.order", "sw"); // d3d, mtl, es2, sw, default

@@ -23,8 +23,8 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javafx.version>26.0.2</javafx.version>
-        <jfx.static.version>26.0.2-1</jfx.static.version> <!-- separate for testing ga releases -->
+        <javafx.version>27</javafx.version>
+        <jfx.static.version>27</jfx.static.version> <!-- separate for testing ga releases -->
         <jfx.static.feature.version>1.0-SNAPSHOT</jfx.static.feature.version>
         <native.optimization>2</native.optimization> <!-- -Dnative.optimization=b for quick exploration builds -->
         <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
@@ -88,18 +88,6 @@
     </build>
 
     <profiles>
-        <!-- Out of the default reactor because it needs -Djavafx.version=27-ea+30 or newer to compile -->
-        <profile>
-            <id>fx27</id>
-            <modules>
-                <module>example-render-check-27</module>
-            </modules>
-            <properties>
-                <!-- ea until the 27 GA artifacts exist; the libs are versioned by the release they carry -->
-                <javafx.version>27-ea+30</javafx.version>
-                <jfx.static.version>27</jfx.static.version>
-            </properties>
-        </profile>
         <profile>
             <id>native</id>
             <build>
