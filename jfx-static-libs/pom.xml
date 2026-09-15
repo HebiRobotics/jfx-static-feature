@@ -50,7 +50,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- The combined static SDK of the ennerf/jfx build, published as the release <fx.version>-<fx.commit> -->
         <fx.version>26.0.2-internal</fx.version>
-        <fx.commit>5c43295b00</fx.commit>
+        <fx.commit>7f5086bbe6</fx.commit>
         <fx.zip>${project.basedir}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.zip>
         <fx.url>https://github.com/ennerf/jfx/releases/download/${fx.version}-${fx.commit}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.url>
         <fx.reference.platform>linux-x86_64</fx.reference.platform> <!-- source for legal texts -->

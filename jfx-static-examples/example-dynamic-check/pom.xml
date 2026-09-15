@@ -38,7 +38,7 @@
         <dependency>
             <groupId>us.hebi.graalvm</groupId>
             <artifactId>reachability-annotations</artifactId>
-            <version>1.0.0-RC3</version>
+            <version>1.0.0-RC4</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -53,7 +53,7 @@
                         <path>
                             <groupId>us.hebi.graalvm</groupId>
                             <artifactId>reachability-processor</artifactId>
-                            <version>1.0.0-RC3</version>
+                            <version>1.0.0-RC4</version>
                         </path>
                     </annotationProcessorPaths>
                     <compilerArgs>
