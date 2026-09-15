@@ -233,6 +233,7 @@ public class JfxStaticFeature implements Feature {
             return;
         }
         access.registerReachabilityHandler(duringAnalysis -> {
+            enableNativeAccessForUnnamedModule();
             CodeSource source = loader.getProtectionDomain().getCodeSource();
             if (source == null || source.getLocation() == null) {
                 System.out.println("JfxStaticFeature: " + module + " is reachable but has no code source,"
@@ -245,6 +246,19 @@ public class JfxStaticFeature implements Feature {
                 throw new IllegalStateException("Could not resolve the " + module + " jar", e);
             }
         }, loader);
+    }
+
+    // The shared libraries are loaded with the restricted System.load. We can't add flags at this
+    // stage, so we call the internal setter reflectively. If it doesn't work, users will just see
+    // a warning.
+    private static void enableNativeAccessForUnnamedModule() {
+        try {
+            Method addToAllUnnamed = Module.class.getDeclaredMethod("implAddEnableNativeAccessToAllUnnamed");
+            addToAllUnnamed.setAccessible(true);
+            addToAllUnnamed.invoke(null);
+        } catch (ReflectiveOperationException roe) {
+            System.out.println("javafx media/web need --enable-native-access=ALL_UNNAMED");
+        }
     }
 
     @Override
