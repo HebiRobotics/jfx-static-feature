@@ -45,15 +45,17 @@ public final class NativeLibraryLoading {
 
         @Substitute
         public static synchronized void loadLibrary(String libname) {
-            if (loaded.add(libname)) {
+            if (!loaded.contains(libname)) {
                 initialize(libname);
+                loaded.add(libname);
             }
         }
 
         @Substitute
         public static synchronized void loadLibrary(String libname, List<String> dependencies) {
-            if (loaded.add(libname)) {
+            if (!loaded.contains(libname)) {
                 initialize(libname);
+                loaded.add(libname);
             }
         }
 
