@@ -78,6 +78,9 @@ public final class MacStartup {
             launcherThread.setName("JavaFX-Launcher");
             launcherThread.start();
             if (CoreFoundation.isMainThread()) {
+                // Note: this is not used on Headless apps, but it's better to have the 99%
+                // use case be covered by CI. Foundation does not init any UIs, so it works
+                // over SSHs and stays at idle CPU usage without any actual work.
                 CoreFoundation.runMainLoopWhileAlive(launcherThread);
             } else {
                 try {
