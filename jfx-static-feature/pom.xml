@@ -6,7 +6,7 @@
 
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-feature</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
 
     <name>jfx-static-feature</name>
     <description>Feature and substitutions that link the static JavaFX libraries into a native image</description>

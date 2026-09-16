@@ -25,7 +25,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>27</javafx.version>
         <jfx.static.version>27</jfx.static.version> <!-- separate for testing ga releases -->
-        <jfx.static.feature.version>1.0</jfx.static.feature.version>
+        <jfx.static.feature.version>1.1-SNAPSHOT</jfx.static.feature.version>
         <native.optimization>2</native.optimization> <!-- -Dnative.optimization=b for quick exploration builds -->
         <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
         <maven.install.skip>true</maven.install.skip> <!-- examples are only built -->
