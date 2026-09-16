@@ -51,10 +51,10 @@
         <!-- The combined static SDK of the ennerf/jfx build, published as the release <jfx.version>-<jfx.commit> -->
         <jfx.version>27-internal</jfx.version>
         <jfx.commit>4e7e04cebf</jfx.commit>
-        <fx.zip>${project.basedir}/openjfx-${jfx.version}-${jfx.commit}-static.zip</fx.zip>
-        <fx.url>https://github.com/ennerf/jfx/releases/download/${jfx.version}-${jfx.commit}/openjfx-${jfx.version}-${jfx.commit}-static.zip</fx.url>
-        <fx.reference.platform>linux-x86_64</fx.reference.platform> <!-- source for legal texts -->
-        <fx.reference.lib>${fx.reference.platform}/sdk/lib</fx.reference.lib>
+        <jfx.zip>${project.basedir}/openjfx-${jfx.version}-${jfx.commit}-static.zip</jfx.zip>
+        <jfx.url>https://github.com/ennerf/jfx/releases/download/${jfx.version}-${jfx.commit}/openjfx-${jfx.version}-${jfx.commit}-static.zip</jfx.url>
+        <jfx.reference.platform>linux-x86_64</jfx.reference.platform> <!-- source for legal texts -->
+        <jfx.reference.lib>${jfx.reference.platform}/sdk/lib</jfx.reference.lib>
         <gpg.keyname/>
     </properties>
 
@@ -79,13 +79,13 @@
                         </goals>
                         <configuration>
                             <target>
-                                <get src="${fx.url}" dest="${fx.zip}" skipexisting="true"/>
+                                <get src="${jfx.url}" dest="${jfx.zip}" skipexisting="true"/>
 
                                 <!-- Every platform in one jar, so there is no classifier -->
                                 <macrodef name="unpack-platform">
                                     <attribute name="platform"/>
                                     <sequential>
-                                        <unzip src="${fx.zip}"
+                                        <unzip src="${jfx.zip}"
                                                dest="${project.build.outputDirectory}/us/hebi/graalvm/jfx/libs/@{platform}">
                                             <patternset>
                                                 <include name="@{platform}/sdk/lib/*.a"/>
@@ -102,17 +102,17 @@
                                 <unpack-platform platform="darwin-aarch64"/>
 
                                 <!-- Metadata of the annotated modules -->
-                                <unzip src="${fx.zip}" dest="${project.build.directory}/fx-jars">
+                                <unzip src="${jfx.zip}" dest="${project.build.directory}/fx-jars">
                                     <patternset>
-                                        <include name="${fx.reference.lib}/javafx.base.jar"/>
-                                        <include name="${fx.reference.lib}/javafx.graphics.jar"/>
-                                        <include name="${fx.reference.lib}/javafx.controls.jar"/>
-                                        <include name="${fx.reference.lib}/javafx.fxml.jar"/>
-                                        <include name="${fx.reference.lib}/javafx.media.jar"/>
-                                        <include name="${fx.reference.lib}/javafx.web.jar"/>
-                                        <include name="${fx.reference.lib}/javafx.swing.jar"/>
-                                        <include name="${fx.reference.lib}/jfx.incubator.input.jar"/>
-                                        <include name="${fx.reference.lib}/jfx.incubator.richtext.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.base.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.graphics.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.controls.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.fxml.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.media.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.web.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.swing.jar"/>
+                                        <include name="${jfx.reference.lib}/jfx.incubator.input.jar"/>
+                                        <include name="${jfx.reference.lib}/jfx.incubator.richtext.jar"/>
                                     </patternset>
                                     <mapper type="flatten"/>
                                 </unzip>
@@ -124,11 +124,11 @@
                                 </unzip>
 
                                 <!-- License, Classpath Exception and third party notices -->
-                                <unzip src="${fx.zip}" dest="${project.build.outputDirectory}/META-INF">
+                                <unzip src="${jfx.zip}" dest="${project.build.outputDirectory}/META-INF">
                                     <patternset>
-                                        <include name="${fx.reference.platform}/sdk/legal/javafx.graphics/*"/>
+                                        <include name="${jfx.reference.platform}/sdk/legal/javafx.graphics/*"/>
                                     </patternset>
-                                    <mapper type="glob" from="${fx.reference.platform}/sdk/legal/javafx.graphics/*" to="legal/*"/>
+                                    <mapper type="glob" from="${jfx.reference.platform}/sdk/legal/javafx.graphics/*" to="legal/*"/>
                                 </unzip>
                             </target>
                         </configuration>

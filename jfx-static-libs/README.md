@@ -36,7 +36,7 @@ The archives for all platforms are only about 10MB, so we package them into one 
 The contents come from the combined static SDK archive that the fork's `build-static-libs`
 workflow publishes as the GitHub release `<jfx.version>-<jfx.commit>`. The build downloads the
 archive next to this pom on the first run. You can also place one there manually or select one
-with `-Dfx.zip=<archive>`.
+with `-Djfx.zip=<archive>`.
 
 The pom is standalone and has no reactor dependency in either direction. The feature resolves the
 installed artifact by version like any other consumer. The archives get extracted from every
