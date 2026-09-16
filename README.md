@@ -3,6 +3,18 @@
 This project provides a [GraalVM Feature](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that builds JavaFX applications as [GraalVM Native Images](https://www.graalvm.org/native-image/)
 with the JavaFX native code statically linked into a standalone executable.
 
+![AtlantaFX sampler](docs/sampler-blueprints.png)
+*The AtlantaFX sampler as a JavaFX 27 native image on a Raspberry Pi 5*
+
+| AtlantaFX Sampler (RPi5)          | jlink (JIT) | jlink + CDS | native image (AOT) |
+|-----------------------------------|---|---|---|
+| Distribution size                 | 139 MB | 155 MB (+12%) | 124 MB (-11%) |
+| Time to first window              | 3.6 s | 2.7 s (-26%) | 0.5 s (-86%) |
+| First visit: HTMLEditor (WebView) | 2.39 s | 2.31 s (-3%) | 0.22 s (-91%) |
+| First visit: Overview (FXML)      | 1.90 s | 1.50 s (-21%) | 0.32 s (-83%) |
+| Private memory after startup      | 224 MB | 244 MB (+9%) | 164 MB (-27%) |
+| Private memory after all pages    | 1424 MB | 1396 MB (-2%) | 634 MB (-55%) |
+
 Its main highlights are support for
 
 * **All JavaFX Features** including `Richtext`, `WebView`, and `Media` (see [AtlantaFX sampler](https://youtu.be/GA_iAnxznO8)).
@@ -17,7 +29,7 @@ Its main highlights are support for
 
 * **Simple Configuration** requiring only two runtime dependencies. All configs, linker flags, os classifiers, and profiles are picked up by GraalVM from the classpath.
 
-Note that modules that are not available as static archives (web, media) fall back to dynamic linking and shared libraries placed at the output. The system requirements are the same as on a normal JVM, so Linux and macOS still require a working GTK stack.
+Note that modules that are not available as static archives (web, media) fall back to dynamic linking and shared libraries placed at the output. The system requirements are the same as on a normal JVM, so Linux and macOS still require a working GTK stack. Mobile targets are out of scope, for Android and iOS refer to [Gluon Substrate](https://docs.gluonhq.com/).
 
 ## Getting Started
 
@@ -52,6 +64,9 @@ and add the two artifacts in addition to your normal JavaFX dependencies:
 
 `jfx-static-libs` contains the reachability metadata and every platform's static archives in
 one unclassified jar. The `jfx-static-feature` extracts the archives and hands native-image everything it needs to include JavaFX.
+
+Running `mvn -Pnative package` then produces a standalone executable in `target/`.
+[`example-hellofx`](jfx-static-examples/example-hellofx) is a minimal complete project to copy from.
 
 Note that you still need to fulfill the GraalVM prerequisites like a working compiler toolchain.
 
@@ -102,7 +117,7 @@ apt-get install -y libgtk-3-dev libxtst-dev libxxf86vm-dev libgl1-mesa-dev
 
 ### macOS
 
-macOS requires Cocoa to own the main thread, which tends to complicate things. We were able to fix `Application::launch` by doing a proper handoff using substitutions, but without hacking into brittle GraalVM behavior, non-Headless applications that boot the toolkit via `Platform::startup` from `main` hang forever. We added an error explaining the options to at least remove unexpected application hangs:
+macOS requires Cocoa to own the main thread, which tends to complicate things. `Application::launch` works because a substitution hands the first thread over to Cocoa while the launcher waits. `Platform::startup` has to return to its caller, so the same handoff is not possible and calling it from `main` would hang forever. It now fails fast with an error instead:
 
 Such cases need a separate launcher that keeps the first thread in a run loop and calls `main` from a background thread, e.g., the
 [native-launchers-maven-plugin](https://github.com/HebiRobotics/native-launchers-maven-plugin). The same goes for shared libraries where user applications own the main thread.
@@ -170,9 +185,10 @@ five platforms for every push, and collects the snapshots into one report artifa
 ### Building the Static SDK from Source
 
 The `jfx-static-libs` jar repackages the combined static SDK archive that the fork's CI publishes,
-so nothing here has to be built by hand. To reproduce it, build the `jfx27-metadata` branch of
-[ennerf/jfx](https://github.com/ennerf/jfx) with the stock OpenJFX gradle build and a plain
-JDK 25+ without bundled JavaFX:
+so nothing here has to be built by hand. Each [ennerf/jfx release](https://github.com/ennerf/jfx/releases)
+is named `<version>-<commit>` and links the source commit, which is also recorded in the jar's
+`META-INF/NOTICE`. To reproduce an archive, check out that commit and build it with the stock
+OpenJFX gradle build and a plain JDK 25+ without bundled JavaFX:
 
 ```bash
 bash gradlew --no-daemon -PSTATIC_BUILD=true -PCOMPILE_MEDIA=false -PCOMPILE_WEBKIT=false sdk
