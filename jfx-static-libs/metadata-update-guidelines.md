@@ -239,7 +239,7 @@ template needs the `clean`, since gradle does not track `src/jslc/resources`.
 2. Both pushes also run upstream's `JavaFX pre-submit tests` (`submit.yml`). Its Windows headless
    tests have failed on one branch while passing on another branch at the same commit. Compare
    against the other run of the same SHA before treating such a failure as a metadata problem.
-3. In this repository, set `fx.version` and `fx.commit` in `jfx-static-libs/pom.xml`. The artifact
+3. In this repository, set `jfx.version` and `jfx.commit` in `jfx-static-libs/pom.xml`. The artifact
    version is the JavaFX release without the fork's `-internal` suffix (`27`, or `27-1` when only
    the fork build changed). Update `javafx.version` in `jfx-static-examples` once Central has the GA
    artifacts.

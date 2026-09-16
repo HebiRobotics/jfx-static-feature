@@ -48,11 +48,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- The combined static SDK of the ennerf/jfx build, published as the release <fx.version>-<fx.commit> -->
-        <fx.version>27-internal</fx.version>
-        <fx.commit>4e7e04cebf</fx.commit>
-        <fx.zip>${project.basedir}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.zip>
-        <fx.url>https://github.com/ennerf/jfx/releases/download/${fx.version}-${fx.commit}/openjfx-${fx.version}-${fx.commit}-static.zip</fx.url>
+        <!-- The combined static SDK of the ennerf/jfx build, published as the release <jfx.version>-<jfx.commit> -->
+        <jfx.version>27-internal</jfx.version>
+        <jfx.commit>4e7e04cebf</jfx.commit>
+        <fx.zip>${project.basedir}/openjfx-${jfx.version}-${jfx.commit}-static.zip</fx.zip>
+        <fx.url>https://github.com/ennerf/jfx/releases/download/${jfx.version}-${jfx.commit}/openjfx-${jfx.version}-${jfx.commit}-static.zip</fx.url>
         <fx.reference.platform>linux-x86_64</fx.reference.platform> <!-- source for legal texts -->
         <fx.reference.lib>${fx.reference.platform}/sdk/lib</fx.reference.lib>
         <gpg.keyname/>

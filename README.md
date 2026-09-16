@@ -145,7 +145,7 @@ The rest is a small set of workarounds for issues that should eventually be fixe
 | `CompilerWorkarounds` | macOS | GraalVM 25.0.4 fails to outline `MacVariant.toString`                                                                                                                                       |
 | `stubs/Delete*Natives` | all | classes whose natives only another platform's library implements are deleted, so bad cross-OS metadata fails with a named error instead of unresolved symbols                               |
 | `-force_load libglass.a` | macOS | Objective-C categories get dropped from static links                                                                                                                                        |
-| `g_thread_init=0` defsym | Linux | glassgtk3 references a symbol that glib removed in 2.32                                                                                                                                     |
+| `g_thread_init=0` defsym | Linux | glassgtk3 references a symbol that glib removed in 2.32; the zero stub satisfies the linker but crashes if a code path ever calls it                                                        |
 | `libjvm` shim / `$ORIGIN` rpath | Linux, macOS | `libjfxwebkit` links against a `libjvm` that does not exist in a native image                                                                                                               |
 
 ## Building the Project
@@ -204,7 +204,7 @@ mvn -Prelease deploy -pl jfx-static-libs
 mvn -Prelease deploy -pl jfx-static-feature
 ```
 
-`jfx-static-libs` is only deployed for new JavaFX releases or when the metadata changes. The `${fx.commit}` hash and `${jfx.static.version}` must match the release signature of the fork. See [jfx-static-libs/README.md](jfx-static-libs/README.md) for more information.
+`jfx-static-libs` is only deployed for new JavaFX releases or when the metadata changes. The `${jfx.commit}` hash and `${jfx.static.version}` must match the release signature of the fork. See [jfx-static-libs/README.md](jfx-static-libs/README.md) for more information.
 
 The examples and the aggregator are never deployed.
 
