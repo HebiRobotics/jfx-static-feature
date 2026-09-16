@@ -5,8 +5,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -15,14 +13,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.CodeSource;
-import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * Links the static JavaFX libraries into the image and tells Substrate that their JNI entry
@@ -113,6 +109,9 @@ public class JfxStaticFeature implements Feature {
     private static final String GUI_PROPERTY = "jfx.static.gui";
     private Boolean forceGuiMode;
     private boolean imageContainsApplication = false;
+
+    // Media and webkit have no static archives and ship as shared libraries next to the image
+    private final SharedLibraryModules sharedLibraryModules = new SharedLibraryModules();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -224,128 +223,23 @@ public class JfxStaticFeature implements Feature {
 
         // Register web/media as shared libraries if their main entry points are reachable.
         // The required binaries are copied to the output directory from the stock platform jars.
-        registerSharedLibraryModule(access, "javafx.media", "com.sun.media.jfxmediaimpl.NativeMediaManager");
-        registerSharedLibraryModule(access, "javafx.web", "com.sun.webkit.WebPage");
-    }
-
-    // Media and webkit exist only as shared libraries, shipped inside the platform jars.
-    // When a module's loader class is reachable, its jar's libraries get copied next to the image.
-    private final Map<String, Path> sharedLibraryJars = new LinkedHashMap<>();
-
-    private void registerSharedLibraryModule(BeforeAnalysisAccess access, String module, String loaderClassName) {
-        Class<?> loader = access.findClassByName(loaderClassName);
-        if (loader == null) {
-            return;
-        }
-        access.registerReachabilityHandler(duringAnalysis -> {
-            enableNativeAccessForUnnamedModule();
-            CodeSource source = loader.getProtectionDomain().getCodeSource();
-            if (source == null || source.getLocation() == null) {
-                System.out.println("JfxStaticFeature: " + module + " is reachable but has no code source,"
-                                   + " ship its shared libraries next to the image manually");
-                return;
-            }
-            try {
-                sharedLibraryJars.put(module, Path.of(source.getLocation().toURI()));
-            } catch (URISyntaxException e) {
-                throw new IllegalStateException("Could not resolve the " + module + " jar", e);
-            }
-        }, loader);
-    }
-
-    // The shared libraries are loaded with the restricted System.load. We can't add flags at this
-    // stage, so we call the internal setter reflectively. If it doesn't work, users will just see
-    // a warning.
-    private static void enableNativeAccessForUnnamedModule() {
-        try {
-            Method addToAllUnnamed = Module.class.getDeclaredMethod("implAddEnableNativeAccessToAllUnnamed");
-            addToAllUnnamed.setAccessible(true);
-            addToAllUnnamed.invoke(null);
-        } catch (ReflectiveOperationException roe) {
-            System.out.println("javafx media/web need --enable-native-access=ALL_UNNAMED");
-        }
+        sharedLibraryModules.register(access, "javafx.media", "com.sun.media.jfxmediaimpl.NativeMediaManager");
+        sharedLibraryModules.register(access, "javafx.web", "com.sun.webkit.WebPage");
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        Path directory = access.getImagePath().toAbsolutePath().getParent();
-        sharedLibraryJars.forEach((module, jar) -> copySharedLibraries(module, jar, directory));
-        if (Platform.includedIn(Platform.MACOS.class) && sharedLibraryJars.containsKey("javafx.web")) {
-            writeJvmShim(directory);
-        }
-    }
-
-    // libjfxwebkit.dylib links @rpath/libjvm.dylib but imports nothing. GraalVM 25.0 creates shims
-    // only for Windows/Linux, and GraalVM 25.3 creates shims only for AWT or -H:+CreateJvmShim
-    private static void writeJvmShim(Path directory) {
-        Path shim = directory.resolve("libjvm.dylib");
-        if (Files.exists(shim)) {
-            return;
-        }
-        try {
-            List<String> command = ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(
-                    List.of("-shared", "-x", "c", "-Wl,-install_name,@rpath/libjvm.dylib"), shim, Path.of("/dev/null"));
-            Process process = new ProcessBuilder(command)
-                    .redirectErrorStream(true)
-                    .start();
-            String output = new String(process.getInputStream().readAllBytes());
-            if (process.waitFor() != 0) {
-                throw new IllegalStateException("Could not create " + shim + ":\n" + output);
-            }
-        } catch (IOException ioe) {
-            throw new UncheckedIOException("Could not create " + shim, ioe);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while creating " + shim, e);
-        }
-        System.out.println("JfxStaticFeature: created the empty libjvm.dylib needed by libjfxwebkit.dylib");
-    }
-
-    private static void copySharedLibraries(String module, Path jar, Path directory) {
-        int copied = 0;
-        try {
-            if (Files.isDirectory(jar)) {
-                try (var files = Files.list(jar)) {
-                    for (Path file : files.filter(f -> isSharedLibrary(f.getFileName().toString())).toList()) {
-                        Files.copy(file, directory.resolve(file.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
-                        copied++;
-                    }
-                }
-            } else {
-                try (ZipFile zip = new ZipFile(jar.toFile())) {
-                    for (Enumeration<? extends ZipEntry> entries = zip.entries(); entries.hasMoreElements(); ) {
-                        ZipEntry entry = entries.nextElement();
-                        if (!entry.getName().contains("/") && isSharedLibrary(entry.getName())) {
-                            try (InputStream stream = zip.getInputStream(entry)) {
-                                Files.copy(stream, directory.resolve(entry.getName()), StandardCopyOption.REPLACE_EXISTING);
-                                copied++;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (IOException ioe) {
-            throw new UncheckedIOException("Could not copy the " + module + " shared libraries", ioe);
-        }
-        if (copied == 0) {
-            System.out.println("JfxStaticFeature: " + module + " is reachable but " + jar.getFileName()
-                               + " ships no shared libraries, use the platform classifier jar or ship them manually");
-        } else {
-            System.out.println("JfxStaticFeature: copied " + copied + " " + module + " shared libraries next to the image");
-        }
-    }
-
-    private static boolean isSharedLibrary(String name) {
-        return name.endsWith(".dll") || name.endsWith(".so") || name.endsWith(".dylib") || name.contains(".so.");
+        sharedLibraryModules.copyNextToImage(access);
     }
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        List<String> options = linkerOptions((BeforeImageWriteAccessImpl) access);
+        BeforeImageWriteAccessImpl accessImpl = (BeforeImageWriteAccessImpl) access;
+        List<String> options = linkerOptions(accessImpl);
         if (options.isEmpty()) {
             return;
         }
-        ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+        accessImpl.registerLinkerInvocationTransformer(linkerInvocation -> {
             options.forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
