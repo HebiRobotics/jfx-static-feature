@@ -3,8 +3,8 @@
 This project provides a [GraalVM Feature](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that builds JavaFX applications as [GraalVM Native Images](https://www.graalvm.org/native-image/)
 with the JavaFX native code statically linked into a standalone executable.
 
-![AtlantaFX sampler](docs/sampler-blueprints.png)
-*The AtlantaFX sampler as a JavaFX 27 native image on a Raspberry Pi 5*
+[![AtlantaFX sampler](docs/sampler-blueprints.png)](https://youtu.be/GA_iAnxznO8)
+*The AtlantaFX sampler as a JavaFX 27 native image on a Raspberry Pi 5 ([video walkthrough](https://youtu.be/GA_iAnxznO8))*
 
 | AtlantaFX Sampler (RPi5)          | jlink (JIT) | jlink + CDS | native image (AOT) |
 |-----------------------------------|---|---|---|
@@ -17,7 +17,7 @@ with the JavaFX native code statically linked into a standalone executable.
 
 Its main highlights are support for
 
-* **All JavaFX Features** including `Richtext`, `WebView`, and `Media` (see [AtlantaFX sampler](https://youtu.be/GA_iAnxznO8)).
+* **All JavaFX Features** including `Richtext`, `WebView`, and `Media`.
 
 * **All Pipelines** including `sw` fallbacks, as well as the new `mtl` pipeline and `Headless` mode introduced in JavaFX 26. The behavior is the same as on a JVM.
 
