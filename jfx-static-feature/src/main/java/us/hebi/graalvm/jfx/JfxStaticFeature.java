@@ -120,12 +120,15 @@ public class JfxStaticFeature implements Feature {
             return false;
         }
 
-        // Without archives the substitutions would break a dynamic FX image, so stay off
+        // The substitutions apply independently of the feature and break the link without
+        // archives, so an unsupported platform fails here instead of at the linker
         String platform = platformName();
         if (platform == null) {
-            System.out.println("JfxStaticFeature: no static JavaFX libraries known for this platform, staying off");
-            return false;
+            throw UserError.abort("No static JavaFX libraries exist for this platform,"
+                                  + " remove jfx-static-feature from the class path");
         }
+
+        // Check that we have static archives on the classpath and they are compatible with the runtime artifacts
         String javafxVersion = readProperty(JAVAFX_VERSION_RESOURCE, "javafx.version");
         String libsCoordinates = "us.hebi.graalvm:jfx-static-libs:" + (javafxVersion != null ? javafxVersion : "<javafx.version>");
         if (JfxStaticFeature.class.getResource(libsResource(staticLibraries().get(0))) == null) {
@@ -140,7 +143,7 @@ public class JfxStaticFeature implements Feature {
                                   + " on the class path, declare both with the same <javafx.version>");
         }
 
-        // Validated here so a typo aborts early
+        // Check the supported gui property. Done here so typos abort early.
         String gui = System.getProperty(GUI_PROPERTY, "auto");
         forceGuiMode = switch (gui) {
             case "auto" -> null;
