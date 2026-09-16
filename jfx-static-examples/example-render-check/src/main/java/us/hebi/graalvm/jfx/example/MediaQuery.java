@@ -31,7 +31,7 @@ class MediaQuery implements Scenario {
 
     @Override
     public String name() {
-        return "media";
+        return "mediaquery";
     }
 
     @Override

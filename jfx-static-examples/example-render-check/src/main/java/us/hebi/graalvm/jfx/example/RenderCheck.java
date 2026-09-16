@@ -19,7 +19,7 @@ import javafx.stage.Stage;
  * {@code titlebar} a preview extended window with a custom title bar, {@code alert} and {@code popup} the dialog and popup windows
  * with the labels the controls resource bundle carries, {@code robot} a window read back off the screen,
  * {@code richtext} the incubator rich text controls including an RTF import and an embedded image, and
- * {@code media} the CSS media queries and conditional imports. A stage whose conditional
+ * {@code mediaquery} the CSS media queries and conditional imports. A stage whose conditional
  * feature is missing is skipped rather than failed.
  * The pipeline defaults to sw and follows a {@code -Dprism.order=d3d} (es2, mtl) argument, which a
  * native image accepts on the command line, so the same binary checks the GPU path, and

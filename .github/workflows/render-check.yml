@@ -102,7 +102,7 @@ jobs:
         shell: python
         run: |
           import os, re
-          stages = ['2d', '3d', 'titlebar', 'alert', 'popup', 'robot', 'richtext']
+          stages = ['2d', '3d', 'titlebar', 'alert', 'popup', 'robot', 'richtext', 'mediaquery']
           rows = {}
           for name in sorted(os.listdir('snapshots')):
               m = re.match(r'render-check-(.+)-(\w+)\.png$', name)
