@@ -22,6 +22,10 @@ import com.oracle.svm.core.annotate.TargetClass;
  * parks that thread in a CFRunLoop and runs main on a second one, while a native image runs main on
  * the first thread and hangs. Same method as upstream with the latch wait replaced by the run loop,
  * and only when called on the first thread.
+ * <p>
+ * Platform.startup() must return to its caller, so it cannot do the same handoff. When the first
+ * thread is not already pumping a run loop, e.g. provided by a native launcher, it fails fast
+ * instead of hanging.
  *
  * @author Florian Enner
  * @since 26 Aug 2026
@@ -91,6 +95,43 @@ public final class MacStartup {
     }
 
     @Platforms(Platform.MACOS.class)
+    @TargetClass(className = "javafx.application.Platform")
+    static final class Target_Platform {
+
+        @Substitute
+        public static void startup(Runnable runnable) {
+            if (!Target_PlatformImpl.initialized.get()
+                    && "Mac".equals(Target_GlassPlatform.determinePlatform())
+                    && !CoreFoundation.isFirstThreadInRunLoop()) {
+                throw new IllegalStateException("Platform.startup() requires the first thread of a macOS process"
+                        + " to run a CFRunLoop, which a native image does not provide. Use Application.launch(),"
+                        + " or a wrapper launcher similar to native-launchers-maven-plugin.");
+            }
+            com.sun.javafx.application.PlatformImpl.startup(runnable, true);
+        }
+
+    }
+
+    @Platforms(Platform.MACOS.class)
+    @TargetClass(className = "com.sun.javafx.application.PlatformImpl")
+    static final class Target_PlatformImpl {
+
+        @Alias
+        static AtomicBoolean initialized;
+
+    }
+
+    // Headless and other pure-Java glass platforms never need the first thread
+    @Platforms(Platform.MACOS.class)
+    @TargetClass(className = "com.sun.glass.ui.Platform")
+    static final class Target_GlassPlatform {
+
+        @Alias
+        static native String determinePlatform();
+
+    }
+
+    @Platforms(Platform.MACOS.class)
     private static final class CoreFoundation {
 
         private static final int kCFStringEncodingUTF8 = 0x08000100;
@@ -113,8 +154,28 @@ public final class MacStartup {
             }
         }
 
+        // A blocked first thread cannot pump the queue glass posts its startup to, so the toolkit
+        // can only come up when the caller is on another thread and the first thread runs a loop.
+        static boolean isFirstThreadInRunLoop() {
+            if (isMainThread()) {
+                return false;
+            }
+            PointerBase mode = copyCurrentMode(getMainRunLoop());
+            if (mode.isNull()) {
+                return false;
+            }
+            release(mode);
+            return true;
+        }
+
         @CFunction("pthread_main_np")
         private static native int pthreadMainNp();
+
+        @CFunction("CFRunLoopGetMain")
+        private static native PointerBase getMainRunLoop();
+
+        @CFunction("CFRunLoopCopyCurrentMode")
+        private static native PointerBase copyCurrentMode(PointerBase runLoop);
 
         @CFunction("CFStringCreateWithCString")
         private static native PointerBase createString(PointerBase allocator, CCharPointer cString, int encoding);
