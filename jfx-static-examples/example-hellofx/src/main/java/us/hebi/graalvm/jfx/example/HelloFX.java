@@ -18,7 +18,7 @@ public class HelloFX extends Application {
 
     @Override
     public void start(Stage stage) {
-        Label label = new Label("Hello JavaFX 26 static");
+        Label label = new Label("Hello JavaFX " + System.getProperty("javafx.runtime.version") + " static");
         Button button = new Button("Click me");
         int[] clicks = {0};
         button.setOnAction(event -> label.setText("Clicked " + (++clicks[0]) + " times"));
