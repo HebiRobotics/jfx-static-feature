@@ -1,7 +1,7 @@
 # Updating to a new JavaFX release
 
 The exact process for moving `jfx-static-libs` to a new JavaFX release, written so that an agent can
-follow it step by step. It covers the annotated fork [ennerf/jfx](https://github.com/ennerf/jfx),
+follow it step by step. It covers the annotated fork [jfx](https://github.com/ennerf/jfx),
 where the metadata is determined and committed, and this repository, where the build is consumed
 and tested. Last done for 27 on 2026-09-15 (branch `jfx27-metadata`, base `27-ga`).
 
@@ -281,7 +281,7 @@ template needs the `clean`, since gradle does not track `src/jslc/resources`.
    `default`; Linux and Linux aarch64 `sw`, `es2`, `default`; macOS `sw`, `es2`, `mtl`, `default`;
    plus a windowed run per OS with `-Dglass.platform`. Read the run logs for exceptions. A screenshot
    that looks right is not a pass.
-8. Release as described in the README's [Releasing](../README.md#releasing) section.
+8. Release as described in the README's [Releasing](README.md#releasing) section.
 
 ## Agent checklist
 

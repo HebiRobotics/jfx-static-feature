@@ -86,32 +86,32 @@ sudo apt install build-essential zlib1g-dev libgtk-3-dev libxtst-dev libxxf86vm-
 ### Versions
 
 The static archives must be based on the exact same commit as the jars on the class path, so the versioning follows the official `<javafx.version>`. A `jfx-static-libs:27` pairs with the
-`org.openjfx` jars at `27`, but neither is compatible with a `27.0.1`. Bugfixes get published with a patch suffix `${javafx.version}-${patch}`. Matching versions are enforced at build time.
+`org.openjfx:27` jars, but neither is compatible with a `27.0.1`. Bugfixes get published with a patch suffix `${javafx.version}-${patch}`. Matching versions are enforced at build time.
 
-The feature is comparatively independent of the JavaFX release and maintains its own version line. It is likely that it will work across different GraalVM and JavaFX versions, but here are some combinations that we confirmed working for the examples on all platforms:
+The feature is comparatively independent of the JavaFX release and is separately versioned. It is likely that it will work across different GraalVM and JavaFX versions, but here are the latest versions that we confirmed working for the examples on all platforms:
 
-| jfx-static-libs | jfx-static-feature | GraalVM | Notes |
-|---|---|---|---|
-| 27 | 1.0 | 25.0.1, 25.3 | |
-| 26.0.2-1 | 1.0 | 25.0.1, 25.3 | added media, web and swing support |
-| 26.0.2 | 1.0 | 25.0.1, 25.3 | graphics, controls, fxml and the incubator modules only |
+| jfx-static-libs | jfx-static-feature | Oracle GraalVM | Notes                                               |
+|-----------------|--------------------|----------------|-----------------------------------------------------|
+| 27              | 1.0                | 25.3           |                                                     |
+| 26.0.2-1        | 1.0                | 25.3           | added media, web and swing                          |
+| 26.0.2          | 1.0                | 25.3           | graphics, controls, fxml, and the incubator modules |
 
 ## Running the Examples
 
-Each jfx-static-examples/<example> module builds with Maven and a GraalVM 25+ JDK with the following command:
+Each [jfx-static-examples](jfx-static-examples) module builds with Maven and a GraalVM 25+ JDK with the following command:
 
 ```bash
-mvn -Pnative package -pl jfx-static-examples/<example> -am
+mvn -Pnative package -pl jfx-static-examples/example-<name> -am
 ```
 
-This creates an executable at `jfx-static-examples/<example>/target/<name>.exe`.
+This creates an executable at `jfx-static-examples/example-<name>/target/`.
 
-| Example      | Purpose |
-|--------------|---|
-| hellofx    | a minimal app with a button and window for a simple starting point |
-| render-check | renders a fixed set of scenes without a display (2D, 3D, effects, controls, FXML, dialogs, rich text, etc.) and checks its own pixels. `-Dprism.order=d3d` (`es2`, `mtl`, `default`) checks the GPU path of the same image, and `-Dglass.platform=Win` (`Gtk`, `Mac`) renders the same scenes in real windows |
-| dynamic-check | one image with media, web and swing, checked one module per run (`check-dynamic media\|web\|swing`) |
-| jni-metadata | registers every `javafx.graphics` native class across all OS to verify that wrong-platform metadata cannot break the static link |
+| Example       | Purpose                                                          |
+|---------------|------------------------------------------------------------------|
+| hellofx       | minimal app with a button and window for a simple starting point |
+| render-check  | automated check for core, graphics, fxml                         |
+| dynamic-check | automated check for media, web, swing                            |
+| jni-metadata  | compilation robustness check with intentionally bad metadata     |
 
 ## Platform Notes
 
@@ -178,6 +178,8 @@ JavaFX is a highly reflective framework with a lot of platform-specific native c
 **jfx-static-libs** covers the first two parts. It is a single jar per JavaFX release that contains the static archives for all platforms as well as the matching reachability metadata. The archives come from our [jfx](https://github.com/ennerf/jfx) fork, which adds `@Reachable` annotations on top of the official release tag and generates the metadata at compile time, without changing any product code. GraalVM automatically picks up metadata from the class path, so the jar can also be used standalone for dynamically linked images that would otherwise need a tracing agent.
 
 **jfx-static-feature** covers the integration glue. At build time it extracts the archives for the current platform and registers them as built-in JNI libraries, which lets native-image verify every native method at link time. It also adds the linker flags for the referenced system libraries, e.g., GTK on Linux and the Cocoa frameworks on macOS, and registers the no-argument constructor of all reachable `Application` subclasses for a reflective launch. The `media` and `web` natives only exist as shared libraries, so the feature instead copies them from the platform jars next to the executable and loads them from there.
+
+For more information about the build process and maintenance, see [jfx-static-libs/README.md](jfx-static-libs/README.md)
 
 ### Substitutions
 

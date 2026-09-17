@@ -48,7 +48,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- The combined static SDK of the ennerf/jfx build, published as the release <jfx.version>-<jfx.commit> -->
+        <!-- The combined static SDK of the jfx build, published as the release <jfx.version>-<jfx.commit> -->
         <jfx.version>27-internal</jfx.version>
         <jfx.commit>4e7e04cebf</jfx.commit>
         <jfx.zip>${project.basedir}/openjfx-${jfx.version}-${jfx.commit}-static.zip</jfx.zip>

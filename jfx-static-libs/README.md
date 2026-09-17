@@ -1,7 +1,7 @@
 # jfx-static-libs
 
 This artifact packages one JavaFX release as input for GraalVM native-image builds: the statically
-linked JavaFX libraries of every platform and GraalVM reachability metadata that gets generated from source annotations in the [ennerf/jfx](https://github.com/ennerf/jfx) fork.
+linked JavaFX libraries of every platform and GraalVM reachability metadata that gets generated from source annotations in the [jfx](https://github.com/ennerf/jfx) fork.
 
 ```xml
 <dependency>
@@ -15,39 +15,35 @@ The static build needs to match the exact build of the OpenJFX runtime artifacts
 
 The artifact can be used standalone purely to serve as a source for `org.openjfx` metadata for native-image, or combined with [`jfx-static-feature`](../README.md), which extracts the archives and uses them for static compilation. 
 
-The metadata entries are conditional on JavaFX's own types (`typeReachable`), so parts that do not get used do not get included in the image. Entries for other platforms are removed at build time.
+The metadata entries are conditional on JavaFX's own types (`typeReachable`), so parts that do not get used do not get included in the image. JavaFX classes that are not applicable to the target platform get removed at build time.
 
-## Structure
+The archives for all platforms are only about 10MB, so we package them into a single jar without platform classifiers. The extra archives do not get included by GraalVM.
 
-The artifact follows the Gluon Substrate convention for static libraries, with the following structure:
 
-| Path | Content                                                                                                                                                             |
-|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `us/hebi/graalvm/jfx/libs/<platform>/` | The `lib*.a` (`*.lib` on Windows) of `windows-x86_64`, `linux-x86_64`, `linux-aarch64`, `darwin-x86_64` and `darwin-aarch64` |
-| `META-INF/native-image/reachability-generated/org.openjfx/<module>/` | JSON reachability metadata for all supported modules                                                                                                                |
-| `META-INF/legal/` | GPLv2, the Classpath Exception and the third party notices for what the archives contain                                                                            |
-| `META-INF/NOTICE` | The `ennerf/jfx` commit the archives were built from                                                                                                                |
+## Reproducibility & Independence
 
-The archives for all platforms are only about 10MB, so we package them into one jar without platform classifiers. The extra archives do not get included by GraalVM.
+We plan to provide timely builds for new JavaFX releases, but we understand that relying on independent third parties for build tool updates introduces risk. To mitigate that, we designed this project to be fully reproducible, and easy for the community to maintain or fork independently. 
 
+* The feature hooks into JavaFX internals that have not changed in years, so we expect very little work to be required for that. The current workarounds are gated where possible, so they deactivate automatically in case an issue gets fixed upstream.
+
+* The archives come from unmodified jfx sources, and the metadata tends to be stable across versions. The initial metadata took extensive analysis and testing, but going from 26.0.2 to 27 only required two additional annotations. The steps for moving to a new JavaFX release are described in the [metadata-update-guidelines.md](metadata-update-guidelines.md) and follow a process that could be largely automated by an agent.
+
+The jfx-static-feature does not depend on the jfx-static-libs artifact and only requires the archives to be on the classpath at build time. This means that the jars could be built by anyone and live at arbitrary maven coordinates, which can be used to support arbitrary releases and custom builds.
 
 ## Building the Jar
 
 The contents come from the combined static SDK archive that the fork's `build-static-libs`
 workflow publishes as the GitHub release `<jfx.version>-<jfx.commit>`. The build downloads the
-archive next to this pom on the first run. You can also place one there manually or select one
+archive next to this pom on the first run. You can also place a manual build or select one
 with `-Djfx.zip=<archive>`.
 
 The pom is standalone and has no reactor dependency in either direction. The feature resolves the
 installed artifact by version like any other consumer. The archives get extracted from every
 platform's SDK. Each build name contains the corresponding `jfx.commit` to be uniquely identifiable.
 
-The steps for moving to a new JavaFX release are described in
-[metadata-update-guidelines.md](metadata-update-guidelines.md).
-
 ## Building the Static SDK from Source
 
-Each [ennerf/jfx release](https://github.com/ennerf/jfx/releases) is named `<version>-<commit>`
+Each [jfx release](https://github.com/ennerf/jfx/releases) is named `<version>-<commit>`
 and links the source commit, which is also recorded in the jar's `META-INF/NOTICE`. To reproduce
 an archive, check out that commit and build it with the stock OpenJFX gradle build and a plain
 JDK 25+ without bundled JavaFX:
