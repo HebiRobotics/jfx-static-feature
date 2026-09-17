@@ -1,4 +1,4 @@
-# jfx-static-feature - Statically Linked JavaFX Native Images
+# StaticFX - A GraalVM Feature for statically linking JavaFX Native Images
 
 This project provides a [GraalVM Feature](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that builds JavaFX applications as [GraalVM Native Images](https://www.graalvm.org/native-image/)
 with the JavaFX native code statically linked into a standalone executable.
@@ -90,11 +90,11 @@ The static archives must be based on the exact same commit as the jars on the cl
 
 The feature is comparatively independent of the JavaFX release and is separately versioned. It is likely that it will work across different GraalVM and JavaFX versions, but here are the latest versions that we confirmed working for the examples on all platforms:
 
-| jfx-static-libs | jfx-static-feature | Oracle GraalVM | Notes                                               |
-|-----------------|--------------------|----------------|-----------------------------------------------------|
-| 27              | 1.0                | 25.3           |                                                     |
-| 26.0.2-1        | 1.0                | 25.3           | added media, web and swing                          |
-| 26.0.2          | 1.0                | 25.3           | graphics, controls, fxml, and the incubator modules |
+| jfx-static-libs | jfx-static-feature | Oracle GraalVM | Notes                                |
+|-----------------|--------------------|----------------|--------------------------------------|
+| 27              | 1.0                | 25.3           |                                      |
+| 26.0.2-1        | 1.0                | 25.3           | added media, web and swing           |
+| 26.0.2          | 1.0                | 25.3           | graphics, controls, fxml, incubators |
 
 ## Running the Examples
 
