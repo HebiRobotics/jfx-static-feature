@@ -178,7 +178,8 @@ What each finding needs:
 | New `FindClass` literal | add it to `@Reachable(jniAccessible = true, classes = {…})` | the Java class that owns that native library (`WinApplication`, `GtkApplication`, `PrismFontFactory`, `NativeMediaManager`, `WebPage`) |
 | A class only native code names, reached from another class's natives | `@Reachable(jniAccessible = true, classes = X.class) // <native file>` | the class whose native does the lookup |
 | New `Class.forName` over a runtime or branched name | `classNames = {…}` with the smallest `memberAccess` the follow-up call needs | the class doing the lookup |
-| New resource or bundle read by name | `resources = "<glob>"` or `bundles = "<name>"` | the class that reads it |
+| New resource or bundle read by name | `resources = "<glob>"` or `bundles = "<name>"`, the bundle name exactly as passed to `getBundle` | the class that reads it |
+| A lookup that is meant to fail (a `.bss` next to a `.css`, an `@2x` image, a class or service file that may be absent) | the exact name, never a wildcard, and `memberAccess = {}` for classes | the class that makes the lookup, or whose call makes the JDK look it up |
 | A control that sets its own skin by class name | `@Reachable(condition = <Control>.class, memberAccess = MemberAccess.ALL_DECLARED_CONSTRUCTORS)` | the skin |
 | New hand-written or `.stg`-generated effect peer | `@ReachableMember(condition = <Renderer>.class)` on the constructor | the peer or its template |
 
@@ -201,6 +202,15 @@ integration, CSS or resource loading, a new module, or a new native library. For
 Metal default pipeline on macOS, CSS media queries and conditional stylesheet imports. A new
 category of lookup only shows up when step 7 runs the render check, which is how the unregistered
 software effect peers were found for 26.0.2.
+
+Lookups that are meant to fail are invisible to both the sweep and a default-mode render check. The
+default mode returns the expected `null` or `ClassNotFoundException`, but with
+`--exact-reachability-metadata` every unregistered name throws a `Missing*RegistrationError`, which
+jfx's `catch` blocks do not catch. Examples: `StyleManager` probing the `.bss` of every stylesheet,
+`ImageStorage` probing `@2x` images on HiDPI screens, `PlatformImpl.checkForClass` testing for
+optional modules, and the JDK's own service file lookups from `FXMLLoader` and `URI.toURL`. They are
+registered by exact name. The 1.0.0 format's regex patterns only match files that exist, so a
+wildcard does not cover them. Only step 7's exact-mode runs find new ones.
 
 If there was a pre-GA branch, its delta commit was swept against the same `OLD_BASE`, and it can be
 carried over with `git cherry-pick --no-commit <commit>`. The sweep still runs for everything that
@@ -280,7 +290,10 @@ template needs the `clean`, since gradle does not track `src/jslc/resources`.
 7. Run the render check as native images for every platform and pipeline: Windows `sw`, `d3d`,
    `default`; Linux and Linux aarch64 `sw`, `es2`, `default`; macOS `sw`, `es2`, `mtl`, `default`;
    plus a windowed run per OS with `-Dglass.platform`. Read the run logs for exceptions. A screenshot
-   that looks right is not a pass.
+   that looks right is not a pass. The examples build with `--exact-reachability-metadata`; add
+   `-XX:MissingRegistrationReportingMode=Warn` to a run to log every missing registration instead of
+   dying on the first. Run `example-dynamic-check` with `web` and `media` the same way, and the
+   windowed runs on a HiDPI screen, which is the only place the `@2x` probes happen.
 8. Release as described in the README's [Releasing](README.md#releasing) section.
 
 ## Agent checklist

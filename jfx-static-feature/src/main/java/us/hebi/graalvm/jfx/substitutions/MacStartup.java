@@ -24,7 +24,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * and only when called on the first thread.
  * <p>
  * Platform.startup() must return to its caller, so it cannot do the same handoff. When the first
- * thread is not already pumping a run loop, e.g. provided by a native launcher, it fails fast
+ * thread is not already inside a run loop, e.g. provided by a native launcher, it fails fast
  * instead of hanging.
  *
  * @author Florian Enner
@@ -157,7 +157,7 @@ public final class MacStartup {
             }
         }
 
-        // A blocked first thread cannot pump the queue glass posts its startup to, so the toolkit
+        // A blocked first thread never processes the events glass posts its startup to, so the toolkit
         // can only come up when the caller is on another thread and the first thread runs a loop.
         static boolean isFirstThreadInRunLoop() {
             if (isMainThread()) {

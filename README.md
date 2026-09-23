@@ -90,11 +90,12 @@ The static archives must be based on the exact same commit as the jars on the cl
 
 The feature is comparatively independent of the JavaFX release and is separately versioned. It is likely that it will work across different GraalVM and JavaFX versions, but here are the latest versions that we confirmed working for the examples on all platforms:
 
-| jfx-static-libs | jfx-static-feature | Oracle GraalVM | Notes                                |
-|-----------------|--------------------|----------------|--------------------------------------|
-| 27              | 1.0                | 25.3           |                                      |
-| 26.0.2-1        | 1.0                | 25.3           | added media, web and swing           |
-| 26.0.2          | 1.0                | 25.3           | graphics, controls, fxml, incubators |
+| jfx-static-libs | jfx-static-feature | Oracle GraalVM | Notes                                  |
+|-----------------|--------------------|----------------|----------------------------------------|
+| 27-1            | 1.0                | 25.4           | passes `--exact-reachability-metadata` |
+| 27              | 1.0                | 25.4           |                                        |
+| 26.0.2-1        | 1.0                | 25.3           | added media, web and swing             |
+| 26.0.2          | 1.0                | 25.3           | graphics, controls, fxml, incubators   |
 
 ## Running the Examples
 
@@ -189,7 +190,7 @@ Several parts make assumptions that don't hold under native-image and have to be
 |---|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | NativeLibraryLoading | all | `System.loadLibrary` cannot load a static FX library: glass reports JNI versions below the required 1.8, and the image hides the `JNI_OnLoad_<lib>` symbols, so the feature calls the initializers directly |
 | OverloadedNatives | Windows, macOS | Substrate links builtin JNI methods by short name, so overloaded natives never resolve and get routed to their mangled symbols via `@CFunction`                                             |
-| MacStartup | macOS | glass needs the first thread inside a CFRunLoop, but a native image runs `main` there. Covers `Application.launch()`; `Platform.startup()` without a launcher that pumps the first thread fails fast instead of hanging |
+| MacStartup | macOS | glass needs the first thread inside a CFRunLoop, but a native image runs `main` there. Covers `Application.launch()`; `Platform.startup()` without a launcher that keeps the first thread in a run loop fails fast instead of hanging |
 | MacMedia | macOS | AVFoundation rejects the `resource:` URIs of media files inside the image                                                                                                                   |
 | CompilerWorkarounds | macOS | GraalVM 25.0.4 fails to outline `MacVariant.toString`                                                                                                                                       |
 | stubs/Delete\*Natives | all | classes whose natives only another platform's library implements are deleted, so bad cross-OS metadata fails with a named error instead of unresolved symbols                               |
