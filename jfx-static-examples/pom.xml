@@ -76,7 +76,6 @@
                         <fallback>false</fallback>
                         <buildArgs>
                             <buildArg>-O${native.optimization}</buildArg>
-                            <buildArg>--exact-reachability-metadata</buildArg>
                         </buildArgs>
                         <!-- Disable fallback metadata repo for a clean test -->
                         <metadataRepository>
@@ -98,6 +97,31 @@
                         <artifactId>native-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
+            </build>
+        </profile>
+        <!-- GraalVM 25.0.x throws on JDK internal bundle lookups in exact mode (fixed in 25.1), -Dnative.exactMetadata=false turns it off -->
+        <profile>
+            <id>exact-metadata</id>
+            <activation>
+                <property>
+                    <name>native.exactMetadata</name>
+                    <value>!false</value>
+                </property>
+            </activation>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.graalvm.buildtools</groupId>
+                            <artifactId>native-maven-plugin</artifactId>
+                            <configuration>
+                                <buildArgs combine.children="append">
+                                    <buildArg>--exact-reachability-metadata</buildArg>
+                                </buildArgs>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
             </build>
         </profile>
     </profiles>
