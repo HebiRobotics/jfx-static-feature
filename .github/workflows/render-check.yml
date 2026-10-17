@@ -72,6 +72,10 @@ jobs:
           cd jfx-static-examples/example-dynamic-check/target
           ./check-dynamic web "-Dglass.platform=Headless" "-Dprism.order=sw"
 
+      # Only links, running it needs a C host, so exact metadata would check nothing
+      - name: build the shared library
+        run: mvn -B -Pnative package "-Dnative.optimization=b" "-Dnative.exactMetadata=false" -pl jfx-static-examples/example-jfx-library -am
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -170,3 +174,36 @@ jobs:
           cd jfx-static-examples/example-hellofx/target
           timeout 30 xvfb-run -a ./hellofx -Dprism.verbose=true | tee hellofx.log || true
           grep "Initialized prism pipeline" hellofx.log
+
+  # Only links the library, running it needs a host app, which graalvm-mobile-platform tests on the phones
+  mobile-library:
+    name: example-jfx-library for ${{ matrix.profile }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            profile: android
+          - os: macos-latest
+            profile: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          version: "25.4"
+          distribution: graalvm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: nttld/setup-ndk@v1
+        if: matrix.profile == 'android'
+        id: ndk
+        with:
+          ndk-version: r29
+
+      - name: link the library
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: mvn -B -P${{ matrix.profile }} package "-Dnative.optimization=b" "-Dnative.exactMetadata=false" -pl jfx-static-examples/example-jfx-library -am
