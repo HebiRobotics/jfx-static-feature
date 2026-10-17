@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Versioned by the JavaFX build it was made from -->
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jfx-mobile-libs</artifactId>
+    <version>27-SNAPSHOT</version>
+
+    <name>jfx-mobile-libs</name>
+    <description>Static JavaFX libraries and reachability metadata of one JavaFX release for Android and iOS, plus the javafx.graphics classes missing from the desktop jars</description>
+    <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <organization>
+        <name>HEBI Robotics</name>
+        <url>http://www.hebirobotics.com</url>
+    </organization>
+
+    <scm>
+        <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+        <connection>scm:git:git://github.com/HebiRobotics/jfx-static-feature.git</connection>
+        <developerConnection>scm:git:git@github.com:HebiRobotics/jfx-static-feature.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <!-- OpenJFX build output with the same license -->
+    <licenses>
+        <license>
+            <name>GNU General Public License, version 2, with the Classpath Exception</name>
+            <url>https://openjdk.org/legal/gplv2+ce.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ennerf</id>
+            <name>Florian Enner</name>
+            <email>ennerf@users.noreply.github.com</email>
+            <url>https://github.com/ennerf</url>
+            <organization>HEBI Robotics</organization>
+            <organizationUrl>https://github.com/HebiRobotics</organizationUrl>
+        </developer>
+    </developers>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- The combined static SDK of the jfx build, published as the release <jfx.version>-<jfx.commit> -->
+        <jfx.version>27-internal</jfx.version>
+        <jfx.commit>a4d3e38dd4</jfx.commit>
+        <jfx.zip>${project.basedir}/openjfx-${jfx.version}-${jfx.commit}-static.zip</jfx.zip>
+        <jfx.url>https://github.com/ennerf/jfx/releases/download/${jfx.version}-${jfx.commit}/openjfx-${jfx.version}-${jfx.commit}-static.zip</jfx.url>
+        <jfx.reference.platform>linux-x86_64</jfx.reference.platform> <!-- source for legal texts -->
+        <jfx.reference.lib>${jfx.reference.platform}/sdk/lib</jfx.reference.lib>
+        <!-- The OpenJFX release whose jars the consumer takes from Maven Central -->
+        <javafx.version>27</javafx.version>
+        <gpg.keyname/>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <id>unpack-desktop-graphics</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-graphics</artifactId>
+                                    <version>${javafx.version}</version>
+                                    <classifier>linux</classifier>
+                                    <outputDirectory>${project.build.directory}/desktop-classes/linux</outputDirectory>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-graphics</artifactId>
+                                    <version>${javafx.version}</version>
+                                    <classifier>mac-aarch64</classifier>
+                                    <outputDirectory>${project.build.directory}/desktop-classes/mac-aarch64</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>unpack-static-sdk</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <get src="${jfx.url}" dest="${jfx.zip}" skipexisting="true"/>
+
+                                <!-- Every mobile target in one jar, so there is no classifier -->
+                                <macrodef name="unpack-platform">
+                                    <attribute name="platform"/>
+                                    <sequential>
+                                        <unzip src="${jfx.zip}"
+                                               dest="${project.build.outputDirectory}/us/hebi/graalvm/jfx/libs/@{platform}">
+                                            <patternset>
+                                                <include name="@{platform}/sdk/lib/*.a"/>
+                                                <include name="@{platform}/sdk/lib/*.lib"/>
+                                            </patternset>
+                                            <mapper type="flatten"/>
+                                        </unzip>
+                                    </sequential>
+                                </macrodef>
+                                <unpack-platform platform="android-aarch64"/>
+                                <unpack-platform platform="ios-arm64"/>
+                                <unpack-platform platform="ios-arm64-simulator"/>
+
+                                <!-- Metadata of the annotated modules -->
+                                <unzip src="${jfx.zip}" dest="${project.build.directory}/fx-jars">
+                                    <patternset>
+                                        <include name="${jfx.reference.lib}/javafx.base.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.graphics.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.controls.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.fxml.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.media.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.web.jar"/>
+                                        <include name="${jfx.reference.lib}/javafx.swing.jar"/>
+                                        <include name="${jfx.reference.lib}/jfx.incubator.input.jar"/>
+                                        <include name="${jfx.reference.lib}/jfx.incubator.richtext.jar"/>
+                                    </patternset>
+                                    <mapper type="flatten"/>
+                                </unzip>
+                                <unzip dest="${project.build.outputDirectory}">
+                                    <fileset dir="${project.build.directory}/fx-jars" includes="*.jar"/>
+                                    <patternset>
+                                        <include name="META-INF/native-image/reachability-generated/**"/>
+                                    </patternset>
+                                </unzip>
+
+                                <!-- The javafx.graphics classes the host's desktop jar lacks: Android builds on
+                                     Linux and iOS on macOS, so the consumer's OpenJFX jars are those hosts' -->
+                                <macrodef name="copy-missing-classes">
+                                    <attribute name="target"/>
+                                    <attribute name="host"/>
+                                    <sequential>
+                                        <unzip src="${jfx.zip}" dest="${project.build.directory}/mobile-jars">
+                                            <patternset>
+                                                <include name="@{target}/sdk/lib/javafx.graphics.jar"/>
+                                            </patternset>
+                                        </unzip>
+                                        <unzip src="${project.build.directory}/mobile-jars/@{target}/sdk/lib/javafx.graphics.jar"
+                                               dest="${project.build.directory}/mobile-classes/@{target}"/>
+                                        <copy todir="${project.build.outputDirectory}">
+                                            <fileset dir="${project.build.directory}/mobile-classes/@{target}"
+                                                     excludes="META-INF/**,module-info.class">
+                                                <present present="srconly" targetdir="${project.build.directory}/desktop-classes/@{host}"/>
+                                            </fileset>
+                                        </copy>
+                                    </sequential>
+                                </macrodef>
+                                <copy-missing-classes target="android-aarch64" host="linux"/>
+                                <copy-missing-classes target="ios-arm64" host="mac-aarch64"/>
+                                <!-- Whole mobile packages, plus the GL classes of the mobile glass that have to
+                                     share es2's package. Anything else means the builds drifted apart -->
+                                <fileset id="unexpected-classes" dir="${project.build.outputDirectory}"
+                                         includes="com/**,javafx/**,jdk/**"
+                                         excludes="com/sun/glass/ui/android/**,com/sun/glass/ui/ios/**,com/sun/glass/ui/monocle/**,com/sun/prism/es2/MonocleGL*,com/sun/prism/es2/IOSGL*"/>
+                                <pathconvert property="unexpected-classes" refid="unexpected-classes" pathsep="${line.separator}"/>
+                                <fail message="Missing from the desktop jars outside the mobile packages:${line.separator}${unexpected-classes}">
+                                    <condition>
+                                        <resourcecount refid="unexpected-classes" when="greater" count="0"/>
+                                    </condition>
+                                </fail>
+
+                                <!-- License, Classpath Exception and third party notices -->
+                                <unzip src="${jfx.zip}" dest="${project.build.outputDirectory}/META-INF">
+                                    <patternset>
+                                        <include name="${jfx.reference.platform}/sdk/legal/javafx.graphics/*"/>
+                                    </patternset>
+                                    <mapper type="glob" from="${jfx.reference.platform}/sdk/legal/javafx.graphics/*" to="legal/*"/>
+                                </unzip>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Signatures for Maven Central, gpg.keyname comes from settings.xml. Central insists on sources and javadoc jars, so they are empty -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.4.2</version>
+                        <executions>
+                            <execution>
+                                <id>empty-sources</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>sources</classifier>
+                                    <classesDirectory>${project.build.directory}/empty</classesDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>empty-javadoc</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>javadoc</classifier>
+                                    <classesDirectory>${project.build.directory}/empty</classesDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <keyname>${gpg.keyname}</keyname>
+                                    <passphraseServerId>${gpg.keyname}</passphraseServerId>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>
