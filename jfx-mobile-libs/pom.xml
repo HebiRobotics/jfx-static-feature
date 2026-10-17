@@ -7,7 +7,7 @@
     <!-- Versioned by the JavaFX build it was made from -->
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-mobile-libs</artifactId>
-    <version>27-SNAPSHOT</version>
+    <version>27-2</version>
 
     <name>jfx-mobile-libs</name>
     <description>Static JavaFX libraries and reachability metadata of one JavaFX release for Android and iOS, plus the javafx.graphics classes missing from the desktop jars</description>
