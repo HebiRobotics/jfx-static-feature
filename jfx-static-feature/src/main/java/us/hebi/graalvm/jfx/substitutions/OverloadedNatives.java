@@ -53,7 +53,7 @@ public final class OverloadedNatives {
     }
 
     // The C side reads through the JNIEnv, so pass the real one and a local handle
-    @Platforms(Platform.MACOS.class)
+    @Platforms(Platform.DARWIN.class)
     @TargetClass(className = "com.sun.javafx.font.coretext.OS")
     static final class Target_coretext_OS {
 
@@ -107,7 +107,7 @@ public final class OverloadedNatives {
 
     }
 
-    @Platforms(Platform.MACOS.class)
+    @Platforms(Platform.DARWIN.class)
     private static final class CoreText {
 
         // Called once per laid out string, so the array handle lives in a local frame

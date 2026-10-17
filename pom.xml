@@ -15,6 +15,8 @@
 
     <modules>
         <module>jfx-static-libs</module>
+        <module>jfx-mobile-libs</module>
+        <module>jdk-mobile-libs</module>
         <module>jfx-static-feature</module>
         <module>jfx-static-examples</module>
     </modules>

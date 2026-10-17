@@ -67,8 +67,12 @@ public final class NativeLibraryLoading {
         int version;
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             version = WindowsOnLoad.onLoad(libname, vm, reserved);
+        } else if (Platform.includedIn(Platform.ANDROID.class)) {
+            version = AndroidOnLoad.onLoad(libname, vm, reserved);
         } else if (Platform.includedIn(Platform.LINUX.class)) {
             version = LinuxOnLoad.onLoad(libname, vm, reserved);
+        } else if (Platform.includedIn(Platform.IOS.class)) {
+            version = IosOnLoad.onLoad(libname, vm, reserved);
         } else {
             version = MacOnLoad.onLoad(libname, vm, reserved);
         }
@@ -126,6 +130,38 @@ public final class NativeLibraryLoading {
         private static native int onLoadJavafxIio(JNIJavaVM vm, PointerBase reserved);
 
         private WindowsOnLoad() {
+        }
+
+    }
+
+    // Monocle names its glass and es2 libraries, javafx_font has no sources on Android
+    @Platforms(Platform.ANDROID.class)
+    private static final class AndroidOnLoad {
+
+        static int onLoad(String libname, JNIJavaVM vm, PointerBase reserved) {
+            return switch (libname) {
+                case "glass_monocle" -> onLoadGlassMonocle(vm, reserved);
+                case "prism_es2_monocle" -> onLoadPrismEs2Monocle(vm, reserved);
+                case "javafx_font_freetype" -> onLoadJavafxFontFreetype(vm, reserved);
+                case "javafx_iio" -> onLoadJavafxIio(vm, reserved);
+                case "decora_sse", "prism_common", "javafx_font" -> JNI_VERSION_1_8; // no JNI_OnLoad
+                default -> throw new UnsatisfiedLinkError(libname + " is not linked into this image");
+            };
+        }
+
+        @CFunction("JNI_OnLoad_glass_monocle")
+        private static native int onLoadGlassMonocle(JNIJavaVM vm, PointerBase reserved);
+
+        @CFunction("JNI_OnLoad_prism_es2_monocle")
+        private static native int onLoadPrismEs2Monocle(JNIJavaVM vm, PointerBase reserved);
+
+        @CFunction("JNI_OnLoad_javafx_font_freetype")
+        private static native int onLoadJavafxFontFreetype(JNIJavaVM vm, PointerBase reserved);
+
+        @CFunction("JNI_OnLoad_javafx_iio")
+        private static native int onLoadJavafxIio(JNIJavaVM vm, PointerBase reserved);
+
+        private AndroidOnLoad() {
         }
 
     }
@@ -210,6 +246,38 @@ public final class NativeLibraryLoading {
         private static native int onLoadJavafxIio(JNIJavaVM vm, PointerBase reserved);
 
         private MacOnLoad() {
+        }
+
+    }
+
+    // IosImageLoader loads its library as nativeiio, and prism_sw has no JNI_OnLoad on iOS
+    @Platforms(Platform.IOS.class)
+    private static final class IosOnLoad {
+
+        static int onLoad(String libname, JNIJavaVM vm, PointerBase reserved) {
+            return switch (libname) {
+                case "glass" -> onLoadGlass(vm, reserved);
+                case "prism_es2" -> onLoadPrismEs2(vm, reserved);
+                case "javafx_font" -> onLoadJavafxFont(vm, reserved);
+                case "nativeiio" -> onLoadNativeIio(vm, reserved);
+                case "prism_common", "prism_sw" -> JNI_VERSION_1_8; // no JNI_OnLoad
+                default -> throw new UnsatisfiedLinkError(libname + " is not linked into this image");
+            };
+        }
+
+        @CFunction("JNI_OnLoad_glass")
+        private static native int onLoadGlass(JNIJavaVM vm, PointerBase reserved);
+
+        @CFunction("JNI_OnLoad_prism_es2")
+        private static native int onLoadPrismEs2(JNIJavaVM vm, PointerBase reserved);
+
+        @CFunction("JNI_OnLoad_javafx_font")
+        private static native int onLoadJavafxFont(JNIJavaVM vm, PointerBase reserved);
+
+        @CFunction("JNI_OnLoad_nativeiio")
+        private static native int onLoadNativeIio(JNIJavaVM vm, PointerBase reserved);
+
+        private IosOnLoad() {
         }
 
     }

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>us.hebi.graalvm</groupId>
+        <artifactId>jfx-static-examples</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>example-jfx-library</artifactId>
+
+    <name>example-jfx-library</name>
+    <description>A JavaFX application as a shared library, built with mvn -Pnative|android|ios|ios-simulator package</description>
+
+    <properties>
+        <skipNativeBuild>false</skipNativeBuild>
+        <graalvm.version>25.4.4.1.1</graalvm.version> <!-- the GraalVM that builds the mobile images -->
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.graalvm.sdk</groupId>
+            <artifactId>nativeimage</artifactId>
+            <version>${graalvm.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.graalvm.buildtools</groupId>
+                    <artifactId>native-maven-plugin</artifactId>
+                    <configuration>
+                        <imageName>libhellofx</imageName> <!-- Android's System.loadLibrary needs the lib prefix -->
+                        <sharedLibrary>true</sharedLibrary>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <!-- The mobile targets swap jfx-static-libs for jfx-mobile-libs and add jdk-mobile-libs. JavaFX itself comes from
+         Maven Central: the Linux jars for Android and the macOS jars for iOS, picked by the build host -->
+    <profiles>
+        <!-- libhellofx.so for arm64-v8a, on a Linux host with the NDK in ANDROID_NDK_HOME -->
+        <profile>
+            <id>android</id>
+            <properties>
+                <jfx.static.libs>jfx-mobile-libs</jfx.static.libs>
+                <android.ndk>${env.ANDROID_NDK_HOME}</android.ndk>
+                <android.api>26</android.api>
+                <android.clang>${android.ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${android.api}-clang</android.clang>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>us.hebi.graalvm</groupId>
+                    <artifactId>jdk-mobile-libs</artifactId>
+                    <version>${graalvm.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <configuration>
+                            <buildArgs combine.children="append">
+                                <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+                                <buildArg>-Dsvm.platform=org.graalvm.nativeimage.Platform$ANDROID_AARCH64</buildArg>
+                                <buildArg>-H:CCompilerPath=${android.clang}</buildArg>
+                                <!-- FFM stubs follow the builder's calling convention, the JDK reads it before any feature runs -->
+                                <buildArg>-J-Djdk.internal.foreign.CABI=LINUX_AARCH_64</buildArg>
+                                <!-- native-image runs in the project directory, this keeps the unpacked archives in target -->
+                                <buildArg>-H:CAPCacheDir=${project.build.directory}/jdk-mobile-libs/cap</buildArg>
+                                <buildArg>-H:CLibraryPath=${project.build.directory}/jdk-mobile-libs/lib</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                    <!-- An unset ANDROID_NDK_HOME would otherwise surface as native-image's toolchain error -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>android-ndk</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <requireFilesExist>
+                                            <files>
+                                                <file>${android.clang}</file>
+                                            </files>
+                                            <message>No NDK clang for API ${android.api}: set ANDROID_NDK_HOME (or -Dandroid.ndk) to an NDK on a Linux x86_64 host</message>
+                                        </requireFilesExist>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- libhellofx.dylib for iPhones, on an arm64 Mac with Xcode -->
+        <profile>
+            <id>ios</id>
+            <properties>
+                <jfx.static.libs>jfx-mobile-libs</jfx.static.libs>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>us.hebi.graalvm</groupId>
+                    <artifactId>jdk-mobile-libs</artifactId>
+                    <version>${graalvm.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <configuration>
+                            <buildArgs combine.children="append">
+                                <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+                                <buildArg>-Dsvm.platform=org.graalvm.nativeimage.Platform$IOS_AARCH64</buildArg>
+                                <!-- iOS grants less address space than the default isolate reserves -->
+                                <buildArg>-R:ReservedAddressSpaceSize=2g</buildArg>
+                                <buildArg>-H:CAPCacheDir=${project.build.directory}/jdk-mobile-libs/cap</buildArg>
+                                <buildArg>-H:CLibraryPath=${project.build.directory}/jdk-mobile-libs/lib</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- libhellofx.dylib for the arm64 simulator, on an arm64 Mac with Xcode -->
+        <profile>
+            <id>ios-simulator</id>
+            <properties>
+                <jfx.static.libs>jfx-mobile-libs</jfx.static.libs>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>us.hebi.graalvm</groupId>
+                    <artifactId>jdk-mobile-libs</artifactId>
+                    <version>${graalvm.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <configuration>
+                            <buildArgs combine.children="append">
+                                <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+                                <buildArg>-Dsvm.platform=org.graalvm.nativeimage.Platform$IOS_AARCH64</buildArg>
+                                <buildArg>-H:CCompilerOption=--target=arm64-apple-ios15.0-simulator</buildArg>
+                                <buildArg>-H:CAPCacheDir=${project.build.directory}/jdk-mobile-libs/cap</buildArg>
+                                <buildArg>-H:CLibraryPath=${project.build.directory}/jdk-mobile-libs/lib</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

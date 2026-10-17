@@ -31,7 +31,7 @@ with the JavaFX native code statically linked into a standalone executable.
 
 * **Complete Metadata** with close to 1,000 reflection, JNI, and resource entries covering all of JavaFX. The entries are conditional, so unused parts stay out of the image.
 
-Note that modules that are not available as static archives (web, media) fall back to dynamic linking and place shared libraries at the output. The system requirements are the same as on a normal JVM, so Linux and macOS still require a working GTK stack. Mobile targets are out of scope, for Android and iOS refer to [Gluon Substrate](https://docs.gluonhq.com/).
+Note that modules that are not available as static archives (web, media) fall back to dynamic linking and place shared libraries at the output. The system requirements are the same as on a normal JVM, so Linux and macOS still require a working GTK stack. Android and iOS use a separate pair of artifacts, see [Mobile](#mobile).
 
 ## Getting Started
 
@@ -90,12 +90,13 @@ The static archives must be based on the exact same commit as the jars on the cl
 
 The feature is comparatively independent of the JavaFX release and is separately versioned. It is likely that it will work across different GraalVM and JavaFX versions, but here are the latest versions that we confirmed working for the examples on all platforms:
 
-| jfx-static-libs | jfx-static-feature | Oracle GraalVM | Notes                                  |
-|-----------------|--------------------|----------------|----------------------------------------|
-| 27-1            | 1.0                | 25.4           | passes `--exact-reachability-metadata` |
-| 27              | 1.0                | 25.4           |                                        |
-| 26.0.2-1        | 1.0                | 25.3           | added media, web and swing             |
-| 26.0.2          | 1.0                | 25.3           | graphics, controls, fxml, incubators   |
+| jfx-static/mobile-libs | jfx-static-feature | Oracle GraalVM (jdk-mobile-libs) | Notes                                  |
+|------------------------|--------------------|----------------------------------|----------------------------------------|
+| 27-2                   | 1.1                | 25.4  (25.4.4.1.1)               | added Android and iOS                  |
+| 27-1                   | 1.0                | 25.4                             | passes `--exact-reachability-metadata` |
+| 27                     | 1.0                | 25.4                             |                                        |
+| 26.0.2-1               | 1.0                | 25.3                             | added media, web and swing             |
+| 26.0.2                 | 1.0                | 25.3                             | graphics, controls, fxml, incubators   |
 
 ## Running the Examples
 
@@ -113,6 +114,41 @@ This creates an executable at `jfx-static-examples/example-<name>/target/`.
 | render-check  | automated check for core, graphics, fxml                         |
 | dynamic-check | automated check for media, web, swing                            |
 | jni-metadata  | compilation robustness check with intentionally bad metadata     |
+| jfx-library   | hellofx as a shared library for a native host app                |
+
+The [example-jfx-library](jfx-static-examples/example-jfx-library) creates a shared library instead, and also builds for mobile with its `android`, `ios` and `ios-simulator` profiles, see the [Mobile](#mobile) section.
+
+## Mobile
+
+Android and iOS images are built as shared libraries that get loaded by a wrapper application. They need `jdk-mobile-libs` to add jdk/substrate binaries for the matching GraalVM version and `jfx-mobile-libs` instead of `jfx-static-libs`. The mobile-libs artifact is laid out in the same manner, but it also contains the mobile-specific runtime classes (monocle) that are missing from the desktop releases.
+
+We currently bundle archives for `android-aarch64`, `ios-arm64` and `ios-arm64-simulator`.
+
+```xml
+<dependency>
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jfx-static-feature</artifactId>
+    <version>1.1</version>
+</dependency>
+<dependency>
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jfx-mobile-libs</artifactId>
+    <version>${javafx.version}</version>
+    <scope>runtime</scope>
+</dependency>
+<dependency>
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jdk-mobile-libs</artifactId>
+    <version>25.4.4.1.1</version> <!-- needs to match the exact Oracle GraalVM version -->
+    <scope>runtime</scope>
+</dependency>
+```
+
+Only one of `jfx-static-libs` and `jfx-mobile-libs` may be on the class path. OpenJFX publishes no mobile jars, so the regular `org.openjfx` dependencies stay as they are and resolve to the jars of the build host. That is why Android images have to be built on Linux and iOS images on macOS: `jfx-mobile-libs` adds the Android, Monocle and iOS toolkit classes that those jars lack, and the feature removes the desktop parts at build time. A build on any other host fails with an error that names the rule. Some of the added classes share a package with `javafx.graphics`, so mobile images need to be built from the class path rather than the module path.
+
+The target is selected with native-image options rather than an os classifier. The profiles in the [example-jfx-library](jfx-static-examples/example-jfx-library/pom.xml) pom are the ones to copy: `-Dsvm.platform` for the target, the NDK clang and the CABI flag for Android, the reserved address space for iOS devices and the target triple for the simulator. Its [README](jfx-static-examples/example-jfx-library/README.md) explains each of them and lists the prerequisites, which are Oracle GraalVM 25.4 plus the Android NDK on a Linux x86_64 host, or Xcode on an Apple Silicon Mac.
+
+The result is a shared library, which Android Studio or Xcode then package, sign and install like any other native code. Launching JavaFX inside the host app, forwarding input and lifecycle events, and accessing the platform services is up to the application and not part of this project.
 
 ## Platform Notes
 
@@ -193,6 +229,10 @@ Several parts make assumptions that don't hold under native-image and have to be
 | MacStartup | macOS | glass needs the first thread inside a CFRunLoop, but a native image runs `main` there. Covers `Application.launch()`; `Platform.startup()` without a launcher that keeps the first thread in a run loop fails fast instead of hanging |
 | MacMedia | macOS | AVFoundation rejects the `resource:` URIs of media files inside the image                                                                                                                   |
 | CompilerWorkarounds | macOS | GraalVM 25.0.4 fails to outline `MacVariant.toString`                                                                                                                                       |
+| bugfixes/CacheFilterScale | all | `CacheHint.SCALE` renders the cache with the X scale on both axes, so a cached node under a non-uniform scale is drawn at the wrong height. Not a native-image problem, so JVM runs keep the bug |
+| bugfixes/IosFonts | iOS | bold System text renders regular: the font file cache is keyed by file name and all weights share one variable font file (JDK-8246104 added the font name to the key on macOS only) |
+| bugfixes/IosFontWeights | iOS | System text styled 500, 600 or 800/900 renders regular or semibold: the font loader reduces the weight to a bold flag. 600 now gets the emphasized font (SF Semibold, iOS's bold trait) like 700, 500 and 800/900 get SF Medium and SF Bold through CoreText's weight trait |
+| bugfixes/IosAdvances | iOS | text is narrower than native and semibold is spaced like regular: advances come from the variable font file's default instance, so CoreText now provides them for every glyph. Kerning is still not applied |
 | stubs/Delete\*Natives | all | classes whose natives only another platform's library implements are deleted, so bad cross-OS metadata fails with a named error instead of unresolved symbols                               |
 | -force_load libglass.a | macOS | Objective-C categories get dropped from static links                                                                                                                                        |
 | g_thread_init=0 defsym | Linux | glassgtk3 references a symbol that glib removed in 2.32; the zero stub satisfies the linker but crashes if a code path ever calls it                                                        |
