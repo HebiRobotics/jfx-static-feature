@@ -68,7 +68,7 @@ and publishes the combined archive as a GitHub release, which is what this artif
 
 ## Releasing
 
-The two artifacts do not depend on each other and are released separately with a `release` profile:
+The individual artifacts do not depend on each other and are released separately with a `release` profile:
 
 ```
 mvn -Prelease deploy -pl jfx-static-libs
@@ -77,7 +77,20 @@ mvn -Prelease deploy -pl jfx-static-feature
 
 `jfx-static-libs` is only deployed for new JavaFX releases or when the metadata changes. The `${jfx.commit}` hash and `${jfx.static.version}` must match the release signature of the fork. The steps are described in [metadata-update-guidelines.md](metadata-update-guidelines.md).
 
+The mobile artifacts work in the same manner
+
+```
+mvn -Prelease deploy -pl jdk-mobile-libs
+mvn -Prelease deploy -pl jfx-mobile-libs
+```
+
 The examples and the aggregator are never deployed.
+
+All together
+
+```
+mvn clean -Prelease deploy -pl jfx-static-libs,jfx-static-feature,jdk-mobile-libs,jfx-mobile-libs
+```
 
 ## License
 
