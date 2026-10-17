@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Versioned by the Oracle GraalVM release whose JDK and C libraries it carries -->
+    <groupId>us.hebi.graalvm</groupId>
+    <artifactId>jdk-mobile-libs</artifactId>
+    <version>25.4.4.1.1</version>
+
+    <name>jdk-mobile-libs</name>
+    <description>Static JDK and GraalVM C libraries and CAP caches for Android and iOS native images of one GraalVM release</description>
+    <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <organization>
+        <name>HEBI Robotics</name>
+        <url>http://www.hebirobotics.com</url>
+    </organization>
+
+    <scm>
+        <url>https://github.com/HebiRobotics/jfx-static-feature</url>
+        <connection>scm:git:git://github.com/HebiRobotics/jfx-static-feature.git</connection>
+        <developerConnection>scm:git:git@github.com:HebiRobotics/jfx-static-feature.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <!-- OpenJDK and GraalVM build output with the same license -->
+    <licenses>
+        <license>
+            <name>GNU General Public License, version 2, with the Classpath Exception</name>
+            <url>https://openjdk.org/legal/gplv2+ce.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ennerf</id>
+            <name>Florian Enner</name>
+            <email>ennerf@users.noreply.github.com</email>
+            <url>https://github.com/ennerf</url>
+            <organization>HEBI Robotics</organization>
+            <organizationUrl>https://github.com/HebiRobotics</organizationUrl>
+        </developer>
+    </developers>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Maven Central has no svm for the 25.4 line, 25.0.4 is the newest -->
+        <svm.version>25.0.4</svm.version>
+        <!-- The combined libraries of the labs-openjdk build, published as the release <graalvm.release>-<mobile.commit> -->
+        <graalvm.release>25.4.4.1.1</graalvm.release>
+        <mobile.commit>c693e02d74</mobile.commit>
+        <mobile.zip>${project.basedir}/graalvm-${graalvm.release}-${mobile.commit}-static.zip</mobile.zip>
+        <mobile.url>https://github.com/ennerf/labs-openjdk/releases/download/${graalvm.release}-${mobile.commit}/graalvm-${graalvm.release}-${mobile.commit}-static.zip</mobile.url>
+        <mobile.reference.target>android-aarch64</mobile.reference.target> <!-- source for legal texts -->
+        <gpg.keyname/>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.graalvm.sdk</groupId>
+            <artifactId>nativeimage</artifactId>
+            <version>${graalvm.release}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>svm</artifactId>
+            <version>${svm.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>unpack-static-libs</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <get src="${mobile.url}" dest="${mobile.zip}" skipexisting="true"/>
+
+                                <!-- Every target in one jar, so there is no classifier. The feature
+                                     cannot list a jar directory, so each one gets an index -->
+                                <macrodef name="unpack-dir">
+                                    <attribute name="target"/>
+                                    <attribute name="dir"/>
+                                    <attribute name="includes"/>
+                                    <sequential>
+                                        <local name="files"/>
+                                        <unzip src="${mobile.zip}"
+                                               dest="${project.build.outputDirectory}/us/hebi/graalvm/mobile/@{target}/@{dir}">
+                                            <patternset>
+                                                <include name="@{target}/sdk/@{dir}/@{includes}"/>
+                                            </patternset>
+                                            <mapper type="flatten"/>
+                                        </unzip>
+                                        <pathconvert property="files" pathsep="${line.separator}">
+                                            <fileset dir="${project.build.outputDirectory}/us/hebi/graalvm/mobile/@{target}/@{dir}"/>
+                                            <mapper type="flatten"/>
+                                        </pathconvert>
+                                        <echo file="${project.build.outputDirectory}/us/hebi/graalvm/mobile/@{target}/@{dir}.list"
+                                              message="${files}${line.separator}"/>
+                                    </sequential>
+                                </macrodef>
+                                <macrodef name="unpack-target">
+                                    <attribute name="target"/>
+                                    <sequential>
+                                        <unpack-dir target="@{target}" dir="lib" includes="*.a"/>
+                                        <unpack-dir target="@{target}" dir="cap" includes="*.cap"/>
+                                    </sequential>
+                                </macrodef>
+                                <unpack-target target="android-aarch64"/>
+                                <unpack-target target="ios-arm64"/>
+                                <unpack-target target="ios-arm64-simulator"/>
+
+                                <!-- Licenses, Classpath Exception and third party notices -->
+                                <unzip src="${mobile.zip}" dest="${project.build.outputDirectory}/META-INF">
+                                    <patternset>
+                                        <include name="${mobile.reference.target}/sdk/legal/**"/>
+                                    </patternset>
+                                    <mapper type="glob" from="${mobile.reference.target}/sdk/legal/*" to="legal/*"/>
+                                </unzip>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Sources, javadoc and signatures for Maven Central, gpg.keyname comes from settings.xml -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.4.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.12.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadoc</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <keyname>${gpg.keyname}</keyname>
+                                    <passphraseServerId>${gpg.keyname}</passphraseServerId>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

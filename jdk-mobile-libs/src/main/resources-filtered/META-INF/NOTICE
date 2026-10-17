@@ -1,0 +1,10 @@
+us.hebi.graalvm:jdk-mobile-libs:${project.version}
+
+The static libraries under us/hebi/graalvm/mobile/*/lib/ are build output of OpenJDK and GraalVM,
+licensed under the GNU General Public License version 2 with the Classpath Exception. The license
+texts and the third party notices that apply to them are in META-INF/legal/.
+
+The JDK libraries were built from https://github.com/ennerf/labs-openjdk at commit ${mobile.commit},
+a fork of https://github.com/graalvm/labs-openjdk that adds the OpenJDK Mobile changes for Android
+and iOS. The GraalVM C libraries and the CAP caches under us/hebi/graalvm/mobile/*/cap/ were built
+from https://github.com/oracle/graal at tag vm-${graalvm.release} by the same workflow.
