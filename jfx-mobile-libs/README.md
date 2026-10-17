@@ -21,9 +21,8 @@ time.
 The added GL classes share a package with the OpenJFX jar, so mobile images need to be built from the
 class path rather than the module path.
 
-The jar is additive to `jfx-static-libs`, and a build may have both on the class path. Desktop-only
-projects should not add it, because its classes would end up in every desktop image's analysis and it
-excludes the Metal shaders, which a macOS image needs.
+The jar is laid out in the same manner as `jfx-static-libs` and replaces it in mobile builds. It's best practice to only have one of the artifacts on the class path as they share the same version file for checking.
+
 
 ## Building the Jar
 
