@@ -1,5 +1,6 @@
 package us.hebi.graalvm.jfx;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -12,7 +13,9 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -71,6 +74,27 @@ public class JfxStaticFeature implements Feature {
             "javafx_font",
             "javafx_iio");
 
+    // es2 only, buildSrc/ios.gradle has no decora_sse and no mtl
+    private static final List<String> IOS_LIBRARIES = List.of(
+            "glass",
+            "prism_common",
+            "prism_es2",
+            "prism_sw",
+            "javafx_font",
+            "javafx_iio");
+
+    // Monocle glass and es2. javafx_font is an empty archive on Android, javafx_font_freetype does the fonts
+    private static final List<String> ANDROID_LIBRARIES = List.of(
+            "glass_monocle",
+            "prism_common",
+            "prism_es2_monocle",
+            "decora_sse",
+            "javafx_font_freetype",
+            "javafx_iio");
+
+    // Android has no public FreeType, so the libs jar ships it next to the JavaFX archives
+    private static final List<String> ANDROID_BUNDLED_LIBRARIES = List.of("freetype");
+
     /**
      * System libraries the static glass, prism and font archives reference. STATIC_BUILD only
      * drops the link flags from the archives, it does not vendor anything, so every one of these
@@ -87,6 +111,8 @@ public class JfxStaticFeature implements Feature {
             "X11", "Xtst", "Xxf86vm", "GL",
             "stdc++", "m");
 
+    private static final List<String> ANDROID_SYSTEM_LIBRARIES = List.of("EGL", "GLESv2", "android", "log", "m");
+
     // The macOS frameworks are not libraries and go through linkerOptions()
     private static final List<String> MACOS_SYSTEM_LIBRARIES = List.of("objc", "c++");
 
@@ -95,12 +121,20 @@ public class JfxStaticFeature implements Feature {
             "AppKit", "ApplicationServices", "Carbon", "OpenGL", "QuartzCore", "Security",
             "Network", "Metal", "CoreText", "CoreGraphics", "CoreFoundation");
 
-    // Where jfx-static-libs keeps the archives of every platform
+    // What the iOS glass, prism_es2, font and iio sources import
+    private static final List<String> IOS_FRAMEWORKS = List.of(
+            "UIKit", "Foundation", "CoreFoundation", "CoreGraphics", "CoreText", "QuartzCore",
+            "OpenGLES", "ImageIO", "MobileCoreServices");
+
+    // Where jfx-static-libs and jfx-mobile-libs keep the archives of every platform
     private static final String LIBS_RESOURCES = "/us/hebi/graalvm/jfx/libs/";
 
     // Versions of the libs jar and of the JavaFX jars, shipped in jfx-static-libs and javafx-base
     private static final String LIBS_VERSION_RESOURCE = LIBS_RESOURCES + "version.properties";
     private static final String JAVAFX_VERSION_RESOURCE = "/javafx.properties";
+
+    // The iOS archives for devices or the simulator, decided once by the C compiler
+    private static Boolean iosSimulator;
 
     // Where beforeAnalysis unpacked the archives, needed again for the macOS -force_load
     private Path staticLibraryDirectory;
@@ -119,6 +153,15 @@ public class JfxStaticFeature implements Feature {
             return false;
         }
 
+        // The classes in jfx-mobile-libs complete the OpenJFX jars of one build host
+        if (isMobile()) {
+            String target = Platform.includedIn(Platform.ANDROID.class) ? "Android" : "iOS";
+            String host = Platform.includedIn(Platform.ANDROID.class) ? "Linux" : "Mac";
+            if (!System.getProperty("os.name").startsWith(host)) {
+                throw UserError.abort(target + " images need the OpenJFX jars of " + host + ", build them on " + host);
+            }
+        }
+
         // The substitutions apply independently of the feature and break the link without
         // archives, so an unsupported platform fails here instead of at the linker
         String platform = platformName();
@@ -128,17 +171,18 @@ public class JfxStaticFeature implements Feature {
         }
 
         // Check that we have static archives on the classpath and they are compatible with the runtime artifacts
+        String libsArtifact = isMobile() ? "jfx-mobile-libs" : "jfx-static-libs";
         String javafxVersion = readProperty(JAVAFX_VERSION_RESOURCE, "javafx.version");
-        String libsCoordinates = "us.hebi.graalvm:jfx-static-libs:" + (javafxVersion != null ? javafxVersion : "<javafx.version>");
+        String libsCoordinates = "us.hebi.graalvm:" + libsArtifact + ":" + (javafxVersion != null ? javafxVersion : "<javafx.version>");
         if (JfxStaticFeature.class.getResource(libsResource(staticLibraries().get(0))) == null) {
-            throw UserError.abort("No jfx-static-libs jar for " + platform + " on the class path, add " + libsCoordinates);
+            throw UserError.abort("No " + libsArtifact + " jar for " + platform + " on the class path, add " + libsCoordinates);
         }
         String libsVersion = readProperty(LIBS_VERSION_RESOURCE, "version");
         if (libsVersion == null) {
-            throw UserError.abort("The jfx-static-libs jar predates the version check, use " + libsCoordinates);
+            throw UserError.abort("The " + libsArtifact + " jar predates the version check, use " + libsCoordinates);
         }
         if (javafxVersion != null && !release(libsVersion).equals(release(javafxVersion))) {
-            throw UserError.abort("jfx-static-libs " + libsVersion + " does not match the JavaFX " + javafxVersion
+            throw UserError.abort(libsArtifact + " " + libsVersion + " does not match the JavaFX " + javafxVersion
                                   + " on the class path, declare both with the same <javafx.version>");
         }
 
@@ -178,6 +222,10 @@ public class JfxStaticFeature implements Feature {
         PlatformNativeLibrarySupport nativeLibrarySupport = PlatformNativeLibrarySupport.singleton();
         Method addBuiltinPrefix = builtinPrefixMethod();
         for (String prefix : BUILTIN_PREFIXES) {
+            // iOS has no decora_sse, the SSE peers stay regular JNI and PSWRenderer falls back to Java
+            if (prefix.equals("com_sun_scenario_effect") && Platform.includedIn(Platform.IOS.class)) {
+                continue;
+            }
             try {
                 addBuiltinPrefix.invoke(nativeLibrarySupport, prefix);
             } catch (ReflectiveOperationException roe) {
@@ -208,6 +256,9 @@ public class JfxStaticFeature implements Feature {
 
         for (String library : staticLibraries()) {
             nativeLibraries.addStaticJniLibrary(library);
+        }
+        for (String library : bundledLibraries()) {
+            nativeLibraries.addStaticNonJniLibrary(library);
         }
         for (String library : systemLibraries()) {
             nativeLibraries.addDynamicNonJniLibrary(library);
@@ -247,15 +298,17 @@ public class JfxStaticFeature implements Feature {
 
     // Linker syntax that has no NativeLibraries API behind it
     private List<String> linkerOptions(BeforeImageWriteAccessImpl access) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.ANDROID.class)) {
+            return List.of();
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
             // 1. glassgtk3 references g_thread_init, which glib dropped
             // 2. the libjfxwebkit.so's lookup requires an old style -rpath to find libjvm.so next to it
             return List.of("-Wl,--defsym,g_thread_init=0", "-Wl,--disable-new-dtags", "-Wl,-rpath,$ORIGIN");
-        } else if (Platform.includedIn(Platform.MACOS.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             // The GlassWindow categories define no symbol the linker looks for and get dropped otherwise
             List<String> options = new ArrayList<>();
             options.add("-Wl,-force_load," + staticLibraryDirectory.resolve(staticLibraryFileName("glass")));
-            for (String framework : MACOS_FRAMEWORKS) {
+            for (String framework : Platform.includedIn(Platform.IOS.class) ? IOS_FRAMEWORKS : MACOS_FRAMEWORKS) {
                 options.add("-Wl,-framework," + framework);
             }
             return options;
@@ -275,11 +328,11 @@ public class JfxStaticFeature implements Feature {
         Path directory = tempDirectory.resolve("javafx-static");
         try {
             Files.createDirectories(directory);
-            for (String library : staticLibraries()) {
+            for (String library : concat(staticLibraries(), bundledLibraries())) {
                 String fileName = staticLibraryFileName(library);
                 try (InputStream resource = JfxStaticFeature.class.getResourceAsStream(libsResource(library))) {
                     if (resource == null) {
-                        throw new IOException("Missing " + fileName + " in the jfx-static-libs jar");
+                        throw new IOException("Missing " + fileName + " in the " + (isMobile() ? "jfx-mobile-libs" : "jfx-static-libs") + " jar");
                     }
                     Files.copy(resource, directory.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
                 }
@@ -299,9 +352,14 @@ public class JfxStaticFeature implements Feature {
         return Platform.includedIn(Platform.WINDOWS.class) ? library + ".lib" : "lib" + library + ".a";
     }
 
-    // Spelled like Gluon Substrate's targets, null where there are no archives
+    // Spelled like Gluon Substrate's targets, null where there are no archives. Mobile
+    // first, IOS_AARCH64 also counts as DARWIN_AARCH64
     private static String platformName() {
-        if (Platform.includedIn(Platform.WINDOWS_AMD64.class)) {
+        if (Platform.includedIn(Platform.IOS_AARCH64.class)) {
+            return iosSimulator() ? "ios-arm64-simulator" : "ios-arm64";
+        } else if (Platform.includedIn(Platform.ANDROID_AARCH64.class)) {
+            return "android-aarch64";
+        } else if (Platform.includedIn(Platform.WINDOWS_AMD64.class)) {
             return "windows-x86_64";
         } else if (Platform.includedIn(Platform.LINUX_AMD64.class)) {
             return "linux-x86_64";
@@ -315,23 +373,92 @@ public class JfxStaticFeature implements Feature {
         return null;
     }
 
+    private static boolean isMobile() {
+        return Platform.includedIn(Platform.ANDROID.class) || Platform.includedIn(Platform.IOS.class);
+    }
+
+    private static boolean iosSimulator() {
+        if (iosSimulator == null) {
+            List<String> command = new ArrayList<>();
+            String compiler = (String) optionValue(SubstrateOptions.class, "CCompilerPath");
+            command.add(compiler != null ? compiler : "clang");
+            for (Object option : optionValues(optionValue(SubstrateOptions.class, "CCompilerOption"))) {
+                command.add((String) option);
+            }
+            command.add("-dumpmachine");
+            iosSimulator = run(command).endsWith("-simulator");
+        }
+        return iosSimulator;
+    }
+
+    // Reflective because the option key moved to another package and module after 25.0
+    private static Object optionValue(Class<?> options, String name) {
+        try {
+            Field option = options.getField(name);
+            return option.getType().getMethod("getValue").invoke(option.get(null));
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Could not read -H:" + name, e);
+        }
+    }
+
+    private static List<?> optionValues(Object multiOptionValue) {
+        try {
+            return (List<?>) multiOptionValue.getClass().getMethod("values").invoke(multiOptionValue);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Could not read the values of " + multiOptionValue, e);
+        }
+    }
+
+    private static String run(List<String> command) {
+        try {
+            Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
+            if (process.waitFor() != 0) {
+                throw UserError.abort("Could not run " + String.join(" ", command) + "\n" + output);
+            }
+            return output;
+        } catch (IOException ioe) {
+            throw new UncheckedIOException("Could not run " + command.get(0), ioe);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while running " + command.get(0), ie);
+        }
+    }
+
     private static List<String> staticLibraries() {
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             return WINDOWS_LIBRARIES;
+        } else if (Platform.includedIn(Platform.ANDROID.class)) {
+            return ANDROID_LIBRARIES;
         } else if (Platform.includedIn(Platform.LINUX.class)) {
             return LINUX_LIBRARIES;
         } else if (Platform.includedIn(Platform.MACOS.class)) {
             return MACOS_LIBRARIES;
+        } else if (Platform.includedIn(Platform.IOS.class)) {
+            return IOS_LIBRARIES;
         }
         throw new UnsupportedOperationException("No static JavaFX libraries known for this platform");
+    }
+
+    // Non-JNI archives the libs jar ships because the platform has no system copy
+    private static List<String> bundledLibraries() {
+        return Platform.includedIn(Platform.ANDROID.class) ? ANDROID_BUNDLED_LIBRARIES : List.of();
+    }
+
+    private static List<String> concat(List<String> first, List<String> second) {
+        List<String> all = new ArrayList<>(first);
+        all.addAll(second);
+        return all;
     }
 
     private static List<String> systemLibraries() {
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             return WINDOWS_SYSTEM_LIBRARIES;
+        } else if (Platform.includedIn(Platform.ANDROID.class)) {
+            return ANDROID_SYSTEM_LIBRARIES;
         } else if (Platform.includedIn(Platform.LINUX.class)) {
             return LINUX_SYSTEM_LIBRARIES;
-        } else if (Platform.includedIn(Platform.MACOS.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             return MACOS_SYSTEM_LIBRARIES;
         }
         throw new UnsupportedOperationException("No system libraries known for this platform");
