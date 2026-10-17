@@ -181,9 +181,8 @@ public class JdkMobileFeature implements Feature {
                 copyResources(target, "lib", libraryDirectory.resolve(target));
             }
         } else if (Platform.includedIn(Platform.ANDROID.class)) {
-            // The loader names the library by its soname, missing symbols would only show up at System.loadLibrary
+            // Missing symbols would only show up at System.loadLibrary
             ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                linkerInvocation.addNativeLinkerOption("-Wl,-soname," + linkerInvocation.getOutputFile().getFileName());
                 linkerInvocation.addNativeLinkerOption("-Wl,--no-undefined");
                 return linkerInvocation;
             });
