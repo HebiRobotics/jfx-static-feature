@@ -106,7 +106,7 @@ public class JfxStaticFeature implements Feature {
             "usp10", "advapi32", "shlwapi", "dwmapi", "uuid", "msimg32", "propsys");
 
     private static final List<String> LINUX_SYSTEM_LIBRARIES = List.of(
-            "gtk-3", "gdk-3", "gdk_pixbuf-2.0", "glib-2.0", "gobject-2.0", "gio-2.0", "cairo",
+            "gtk-3", "gdk-3", "gdk_pixbuf-2.0", "glib-2.0", "gobject-2.0", "gio-2.0", "gthread-2.0", "cairo",
             "pangoft2-1.0", "pango-1.0", "freetype",
             "X11", "Xtst", "Xxf86vm", "GL",
             "stdc++", "m");
