@@ -27,7 +27,7 @@
         <javafx.version>27</javafx.version>
         <jfx.static.version>27-2</jfx.static.version> <!-- separate for testing ga releases -->
         <jfx.static.libs>jfx-static-libs</jfx.static.libs> <!-- jfx-mobile-libs in the mobile profiles of example-jfx-library -->
-        <jfx.static.feature.version>1.2-SNAPSHOT</jfx.static.feature.version>
+        <jfx.static.feature.version>1.1.1</jfx.static.feature.version>
         <native.optimization>2</native.optimization> <!-- -Dnative.optimization=b for quick exploration builds -->
         <skipNativeBuild>true</skipNativeBuild> <!-- no parent image -->
         <maven.install.skip>true</maven.install.skip> <!-- examples are only built -->
