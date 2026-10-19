@@ -53,7 +53,7 @@ Then add the two artifacts in addition to your normal JavaFX dependencies:
 <dependency>
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-feature</artifactId>
-    <version>1.0</version>
+    <version>1.1.1</version>
 </dependency>
 <dependency>
     <groupId>us.hebi.graalvm</groupId>
@@ -92,7 +92,7 @@ The feature is comparatively independent of the JavaFX release and is separately
 
 | jfx-static/mobile-libs | jfx-static-feature | Oracle GraalVM (jdk-mobile-libs) | Notes                                  |
 |------------------------|--------------------|----------------------------------|----------------------------------------|
-| 27-2                   | 1.1                | 25.4  (25.4.4.1.1)               | added Android and iOS                  |
+| 27-2                   | 1.1.1              | 25.4  (25.4.4.1.1)               | added Android and iOS                  |
 | 27-1                   | 1.0                | 25.4                             | passes `--exact-reachability-metadata` |
 | 27                     | 1.0                | 25.4                             |                                        |
 | 26.0.2-1               | 1.0                | 25.3                             | added media, web and swing             |
@@ -128,7 +128,7 @@ We currently bundle archives for `android-aarch64`, `ios-arm64` and `ios-arm64-s
 <dependency>
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jfx-static-feature</artifactId>
-    <version>1.1</version>
+    <version>1.1.1</version>
 </dependency>
 <dependency>
     <groupId>us.hebi.graalvm</groupId>
