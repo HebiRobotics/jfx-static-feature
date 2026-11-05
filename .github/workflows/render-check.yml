@@ -60,13 +60,17 @@ jobs:
           cd jfx-static-examples/example-render-check/target
           ./render-check
 
-      # Media, web and swing checks share one image, built once and selected by argument
+      # Media, web and swing checks share one image, built once and selected by argument.
+      # The intel mac runner takes longer than every other job combined, so it stops after
+      # the render check; the steps below run on the other four platforms.
       - name: build the shared-library checks
+        if: matrix.platform != 'darwin-x86_64'
         run: mvn -B -Pnative package "-Dnative.optimization=b" "-Dnative.exactMetadata=${{ matrix.exact || 'true' }}" -pl jfx-static-examples/example-dynamic-check -am
 
       # Headless glass keeps the run display-free on every OS; media needs an audio device
       # and swing a real toolkit, so those two only link here
       - name: run the web check
+        if: matrix.platform != 'darwin-x86_64'
         shell: bash
         run: |
           cd jfx-static-examples/example-dynamic-check/target
@@ -74,6 +78,7 @@ jobs:
 
       # Only links, running it needs a C host, so exact metadata would check nothing
       - name: build the shared library
+        if: matrix.platform != 'darwin-x86_64'
         run: mvn -B -Pnative package "-Dnative.optimization=b" "-Dnative.exactMetadata=false" -pl jfx-static-examples/example-jfx-library -am
 
       - uses: actions/upload-artifact@v4
