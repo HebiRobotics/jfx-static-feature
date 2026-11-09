@@ -7,7 +7,7 @@
     <!-- Versioned by the Oracle GraalVM release whose JDK and C libraries it carries -->
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jdk-mobile-libs</artifactId>
-    <version>25.4.4.1.1</version>
+    <version>25.5.5.0.3</version>
 
     <name>jdk-mobile-libs</name>
     <description>Static JDK and GraalVM C libraries and CAP caches for Android and iOS native images of one GraalVM release</description>
@@ -49,11 +49,11 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Maven Central has no svm for the 25.4 line, 25.0.4 is the newest -->
-        <svm.version>25.0.4</svm.version>
+        <!-- Maven Central has no svm for the 25.5 line, 25.0.5 is the newest -->
+        <svm.version>25.0.5</svm.version>
         <!-- The combined libraries of the labs-openjdk build, published as the release <graalvm.release>-<mobile.commit> -->
-        <graalvm.release>25.4.4.1.1</graalvm.release>
-        <mobile.commit>c693e02d74</mobile.commit>
+        <graalvm.release>25.5.5.0.3</graalvm.release>
+        <mobile.commit>7aa4d7554f</mobile.commit>
         <mobile.zip>${project.basedir}/graalvm-${graalvm.release}-${mobile.commit}-static.zip</mobile.zip>
         <mobile.url>https://github.com/ennerf/labs-openjdk/releases/download/${graalvm.release}-${mobile.commit}/graalvm-${graalvm.release}-${mobile.commit}-static.zip</mobile.url>
         <mobile.reference.target>android-aarch64</mobile.reference.target> <!-- source for legal texts -->

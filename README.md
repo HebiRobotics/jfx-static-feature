@@ -140,14 +140,14 @@ We currently bundle archives for `android-aarch64`, `ios-arm64` and `ios-arm64-s
 <dependency>
     <groupId>us.hebi.graalvm</groupId>
     <artifactId>jdk-mobile-libs</artifactId>
-    <version>25.4.4.1.1</version> <!-- needs to match the exact Oracle GraalVM version -->
+    <version>25.5.5.0.3</version> <!-- needs to match the exact Oracle GraalVM version -->
     <scope>runtime</scope>
 </dependency>
 ```
 
 Only one of `jfx-static-libs` and `jfx-mobile-libs` may be on the class path. OpenJFX publishes no mobile jars, so the regular `org.openjfx` dependencies stay as they are and resolve to the jars of the build host. That is why Android images have to be built on Linux and iOS images on macOS: `jfx-mobile-libs` adds the Android, Monocle and iOS toolkit classes that those jars lack, and the feature removes the desktop parts at build time. A build on any other host fails with an error that names the rule. Some of the added classes share a package with `javafx.graphics`, so mobile images need to be built from the class path rather than the module path.
 
-The target is selected with native-image options rather than an os classifier. The profiles in the [example-jfx-library](jfx-static-examples/example-jfx-library/pom.xml) pom are the ones to copy: `-Dsvm.platform` for the target, the NDK clang and the CABI flag for Android, the reserved address space for iOS devices and the target triple for the simulator. Its [README](jfx-static-examples/example-jfx-library/README.md) explains each of them and lists the prerequisites, which are Oracle GraalVM 25.4 plus the Android NDK on a Linux x86_64 host, or Xcode on an Apple Silicon Mac.
+The target is selected with native-image options rather than an os classifier. The profiles in the [example-jfx-library](jfx-static-examples/example-jfx-library/pom.xml) pom are the ones to copy: `-Dsvm.platform` for the target, the NDK clang and the CABI flag for Android, the reserved address space for iOS devices and the target triple for the simulator. Its [README](jfx-static-examples/example-jfx-library/README.md) explains each of them and lists the prerequisites, which are Oracle GraalVM 25.5 plus the Android NDK on a Linux x86_64 host, or Xcode on an Apple Silicon Mac.
 
 The result is a shared library, which Android Studio or Xcode then package, sign and install like any other native code. Launching JavaFX inside the host app, forwarding input and lifecycle events, and accessing the platform services is up to the application and not part of this project.
 
