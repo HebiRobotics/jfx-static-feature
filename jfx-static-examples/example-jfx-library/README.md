@@ -12,26 +12,26 @@ mvn package -Pnative
 
 ## Mobile
 
-The mobile profiles swap jfx-static-libs for jfx-mobile-libs and add jdk-mobile-libs for the JDK and GraalVM parts, which matches one Oracle GraalVM release (currently 25.4.4.1.1). Only one of the two libs jars may be on the class path. JavaFX itself still comes from Maven Central: the Linux jars that Maven picks on the build host are the ones Android uses, the macOS jars the ones iOS uses.
+The mobile profiles swap jfx-static-libs for jfx-mobile-libs and add jdk-mobile-libs for the JDK and GraalVM parts, which matches one Oracle GraalVM release (currently 25.5.5.0.3). Only one of the two libs jars may be on the class path. JavaFX itself still comes from Maven Central: the Linux jars that Maven picks on the build host are the ones Android uses, the macOS jars the ones iOS uses.
 
 ### Android
 
-Android libraries build on a Linux x86_64 host with Oracle GraalVM 25.4 and the Android NDK (r29 is tested). Point `ANDROID_NDK_HOME` at the NDK and build with the `android` profile:
+Android libraries build on a Linux x86_64 host with Oracle GraalVM 25.5 and the Android NDK (r29 is tested). Point `ANDROID_NDK_HOME` at the NDK and build with the `android` profile:
 
 ```
-export JAVA_HOME=/path/to/graalvm-25.4
+export JAVA_HOME=/path/to/graalvm-25.5
 export ANDROID_NDK_HOME=/path/to/android-ndk-r29
 mvn package -Pandroid
 ```
 
-The result is `target/libhellofx.so`. The profile passes the target platform, the NDK's clang for the API level in the `android.api` property (26 by default), and `-J-Djdk.internal.foreign.CABI=LINUX_AARCH_64`. The last one is needed because the builder generates the FFM stubs for its own calling convention, which is x86_64 on the build host.
+The result is `target/libhellofx.so`. The profile passes the target platform, the NDK's clang for the API level in the `android.api` property (28 by default), and `-J-Djdk.internal.foreign.CABI=LINUX_AARCH_64`. The last one is needed because the builder generates the FFM stubs for its own calling convention, which is x86_64 on the build host.
 
 ### iOS
 
-iOS libraries build on an Apple Silicon Mac with Xcode and Oracle GraalVM 25.4, with the `ios` profile for devices and `ios-simulator` for the simulator:
+iOS libraries build on an Apple Silicon Mac with Xcode and Oracle GraalVM 25.5, with the `ios` profile for devices and `ios-simulator` for the simulator:
 
 ```
-export JAVA_HOME=/path/to/graalvm-25.4/Contents/Home
+export JAVA_HOME=/path/to/graalvm-25.5/Contents/Home
 mvn package -Pios
 ```
 
