@@ -21,20 +21,20 @@ jobs:
         include:
           - os: windows-2022-8core
             platform: windows-x86_64
-            graalvm: "25.4"
+            graalvm: "25.5"
           - os: ubuntu-22.04 # the glibc and GLib the archives were built with
             platform: linux-x86_64
-            graalvm: "25.4"
+            graalvm: "25.5"
           - os: ubuntu-24.04-arm # older archives on a newer glibc and GLib
             platform: linux-aarch64
-            graalvm: "25.4"
+            graalvm: "25.5"
           - os: macos-15-intel
             platform: darwin-x86_64
             graalvm: "25.0.1" # last intel version, and checks for API compatibility
             exact: "false" # 25.0.x throws on JDK internal bundle lookups in exact mode
           - os: macos-latest
             platform: darwin-aarch64
-            graalvm: "25.4"
+            graalvm: "25.5"
     steps:
       - uses: actions/checkout@v4
 
@@ -161,7 +161,7 @@ jobs:
 
       - uses: graalvm/setup-graalvm@v1
         with:
-          version: "25.4"
+          version: "25.5"
           distribution: graalvm
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
