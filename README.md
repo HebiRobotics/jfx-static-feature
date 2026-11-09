@@ -92,6 +92,7 @@ The feature is comparatively independent of the JavaFX release and is separately
 
 | jfx-static/mobile-libs | jfx-static-feature | Oracle GraalVM (jdk-mobile-libs) | Notes                                  |
 |------------------------|--------------------|----------------------------------|----------------------------------------|
+| 27.0.1                 | 1.1.1              | 25.5  (25.5.5.0.3)               | Android needs API 28                   |
 | 27.0.1                 | 1.1.1              | 25.4  (25.4.4.1.1)               |                                        |
 | 27-2                   | 1.1.1              | 25.4  (25.4.4.1.1)               | added Android and iOS                  |
 | 27-1                   | 1.0                | 25.4                             | passes `--exact-reachability-metadata` |
